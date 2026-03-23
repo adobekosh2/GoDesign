@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKT 요금제 구매방식 비교</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; padding: 2rem 1rem; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; }
+  .section-label { font-size: 13px; color: #666; margin-bottom: 6px; }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .row label { font-size: 13px; color: #666; min-width: 0; flex: 0 0 auto; width: 100%; }
+  .row input[type=range] { flex: 1; min-width: 0; accent-color: #378ADD; }
+  .toggle-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .toggle-btn { font-size: 13px; padding: 4px 14px; border-radius: 6px; border: 0.5px solid rgba(0,0,0,0.2); background: #fff; color: #666; cursor: pointer; }
+  .toggle-btn.active { background: #378ADD; color: #fff; border-color: #378ADD; font-weight: 500; }
+  .row .val { font-size: 13px; font-weight: 500; min-width: 0; flex: 0 0 auto; text-align: right; }
+  @media (min-width: 480px) {
+    .row label { width: auto; min-width: 180px; }
+  }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 1.5rem 0; }
+  @media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1rem 1.25rem; }
+  .card.winner { border: 2px solid #1D9E75; }
+  .card-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: #E1F5EE; color: #0F6E56; margin-left: 6px; }
+  .line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .line span:first-child { color: #666; }
+  .highlight-line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .highlight-line span:first-child { color: #185FA5; }
+  .sub { font-size: 12px; color: #666; margin-bottom: 8px; }
+  .divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.1); margin: 10px 0; }
+  .total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 500; }
+  .diff-box { background: #f0f0ee; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #555; line-height: 1.7; }
+  .diff-box strong { color: #1a1a1a; font-weight: 500; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+  .bar-label { min-width: 70px; color: #666; font-size: 12px; }
+  .bar-track { flex: 1; background: #e8e8e6; border-radius: 4px; height: 24px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 500; transition: width 0.3s; }
+  .bar-fill.a { background: #B5D4F4; color: #0C447C; }
+  .bar-fill.b { background: #9FE1CB; color: #085041; }
+  .dtag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; background: #E6F1FB; color: #185FA5; margin-left: 4px; }
+  .container { max-width: 720px; margin: 0 auto; }
+  .settings-box { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SKT 요금제 구매방식 비교 (24개월)</h1>
+
+  <div class="settings-box">
+    <div class="section-label" style="margin-bottom:12px;">조건 설정</div>
+
+    <div style="background:#f7f7f5;border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:500;color:#555;margin-bottom:10px;">공통</div>
+      <div class="row"><label>가족할인</label><div class="toggle-group"><button class="toggle-btn family-btn" data-val="0" onclick="setFamily(this)">0%</button><button class="toggle-btn family-btn" data-val="10" onclick="setFamily(this)">10%</button><button class="toggle-btn family-btn active" data-val="30" onclick="setFamily(this)">30%</button></div></div>
+      <div class="row" style="margin-bottom:0;"><label>선택약정할인</label><div class="toggle-group"><button class="toggle-btn select-btn" data-val="0" onclick="setSelect(this)">0%</button><button class="toggle-btn select-btn active" data-val="25" onclick="setSelect(this)">25%</button></div></div>
+    </div>
+
+    <div style="background:#EBF4FC;border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:500;color:#185FA5;margin-bottom:10px;">공시지원금 + 약정</div>
+      <div class="row"><label>공시지원금 초기비용</label><input type="range" id="costA" min="-200000" max="500000" step="10000" value="110000"><span class="val" id="costAv">110,000원</span></div>
+      <div class="row"><label>109요금제 월정액 (1~6개월)</label><input type="range" id="plan109" min="109000" max="119000" step="1000" value="109000"><span class="val" id="plan109v">109,000원</span></div>
+      <div class="row" style="margin-bottom:0;"><label>사용 요금 월정액 (7~24개월)</label><input type="range" id="planA" min="49000" max="119000" step="1000" value="49000"><span class="val" id="planAv">49,000원</span></div>
+    </div>
+
+    <div style="background:#E1F5EE;border-radius:8px;padding:12px;">
+      <div style="font-size:12px;font-weight:500;color:#0F6E56;margin-bottom:10px;">자급제 + 선택약정</div>
+      <div class="row"><label>자급제 초기비용</label><input type="range" id="costB" min="500000" max="1500000" step="10000" value="1040000"><span class="val" id="costBv">1,040,000원</span></div>
+      <div class="row" style="margin-bottom:0;"><label>사용 요금제 월정액</label><input type="range" id="planB" min="19000" max="119000" step="1000" value="49000"><span class="val" id="planBv">49,000원</span></div>
+    </div>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div style="margin: 1.5rem 0;">
+    <div class="section-label">24개월 총비용 비교</div>
+    <div id="chartArea"></div>
+  </div>
+
+  <div class="diff-box" id="diffBox"></div>
+</div>
+
+<script>
+let familyPct = 30;
+let selectPct = 25;
+function setFamily(btn) {
+  document.querySelectorAll('.family-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  familyPct = +btn.dataset.val;
+  calc();
+}
+function setSelect(btn) {
+  document.querySelectorAll('.select-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectPct = +btn.dataset.val;
+  calc();
+}
+
+function fmt(n) { return Math.round(n).toLocaleString('ko-KR') + '원'; }
+
+function calc() {
+  const planA = +document.getElementById('planA').value;
+  const planB = +document.getElementById('planB').value;
+  const familyRate = familyPct / 100;
+  const selectRate = selectPct / 100;
+  const plan109 = +document.getElementById('plan109').value;
+  const costA = +document.getElementById('costA').value;
+  const costB = +document.getElementById('costB').value;
+
+  document.getElementById('planAv').textContent = fmt(planA);
+  document.getElementById('planBv').textContent = fmt(planB);
+  document.getElementById('plan109v').textContent = fmt(plan109);
+  document.getElementById('costAv').textContent = fmt(costA);
+  document.getElementById('costBv').textContent = fmt(costB);
+
+  const famPct = Math.round(familyRate * 100);
+  const selPct = Math.round(selectRate * 100);
+  const combPct = Math.round((familyRate + selectRate) * 100);
+
+  const monthlyA_high = Math.round(plan109 * (1 - familyRate));
+  const monthlyA_mid = Math.round(planA * (1 - familyRate));
+  const monthlyA_last = Math.round(planA * (1 - familyRate - selectRate));
+  const totalA = costA + monthlyA_high * 6 + monthlyA_mid * 12 + monthlyA_last * 6;
+
+  const monthlyB = Math.round(planB * (1 - familyRate - selectRate));
+  const totalB = costB + monthlyB * 24;
+
+  const winner = totalA < totalB ? 'A' : 'B';
+  const diff = Math.abs(totalA - totalB);
+
+  document.getElementById('cards').innerHTML = `
+    <div class="card ${winner === 'A' ? 'winner' : ''}">
+      <div class="card-title">공시지원금 + 약정${winner === 'A' ? '<span class="badge">더 저렴</span>' : ''}</div>
+      <div class="line"><span>초기비용</span><span>${fmt(costA)}</span></div>
+
+      <div style="border:0.5px solid rgba(0,0,0,0.1);border-radius:6px;padding:8px 10px;margin:8px 0;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">1~6개월 &nbsp;·&nbsp; 109요금제 이상 필수 &nbsp;·&nbsp; 선택약정 불가</div>
+        <div class="line"><span>요금 <span class="dtag">가족 ${famPct}%</span></span><span>${fmt(monthlyA_high * 6)}</span></div>
+        <div style="font-size:11px;color:#999;">${fmt(monthlyA_high)}/월 × 6</div>
+      </div>
+
+      <div style="border:0.5px solid rgba(0,0,0,0.1);border-radius:6px;padding:8px 10px;margin:8px 0;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">7~18개월 &nbsp;·&nbsp; 49요금제 이상 필수 &nbsp;·&nbsp; 선택약정 불가</div>
+        <div class="line"><span>요금 <span class="dtag">가족 ${famPct}%</span></span><span>${fmt(monthlyA_mid * 12)}</span></div>
+        <div style="font-size:11px;color:#999;">${fmt(monthlyA_mid)}/월 × 12</div>
+      </div>
+
+      <div style="border:0.5px solid rgba(0,0,0,0.1);border-radius:6px;padding:8px 10px;margin:8px 0;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">19~24개월 &nbsp;·&nbsp; 49요금제 이상 필수 &nbsp;·&nbsp; 선택약정 가능</div>
+        <div class="line"><span>요금 <span class="dtag">가족+선택약정 ${combPct}%</span></span><span>${fmt(monthlyA_last * 6)}</span></div>
+        <div style="font-size:11px;color:#999;">${fmt(monthlyA_last)}/월 × 6</div>
+      </div>
+      <hr class="divider">
+      <div class="total"><span>24개월 총비용</span><span>${fmt(totalA)}</span></div>
+    </div>
+    <div class="card ${winner === 'B' ? 'winner' : ''}">
+      <div class="card-title">자급제 + 선택약정${winner === 'B' ? '<span class="badge">더 저렴</span>' : ''}</div>
+      <div class="line"><span>초기비용</span><span>${fmt(costB)}</span></div>
+      <div style="border:0.5px solid rgba(0,0,0,0.1);border-radius:6px;padding:8px 10px;margin:8px 0;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">1~24개월</div>
+        <div class="line"><span>요금 <span class="dtag">가족+선택약정 ${combPct}%</span></span><span>${fmt(monthlyB * 24)}</span></div>
+        <div style="font-size:11px;color:#999;">${fmt(monthlyB)}/월 × 24</div>
+      </div>
+      <hr class="divider">
+      <div class="total"><span>24개월 총비용</span><span>${fmt(totalB)}</span></div>
+    </div>
+  `;
+
+  const maxVal = Math.max(totalA, totalB);
+  document.getElementById('chartArea').innerHTML = `
+    <div class="bar-row">
+      <span class="bar-label">공시지원금</span>
+      <div class="bar-track"><div class="bar-fill a" style="width:${Math.round(totalA/maxVal*100)}%">${fmt(totalA)}</div></div>
+    </div>
+    <div class="bar-row">
+      <span class="bar-label">자급제</span>
+      <div class="bar-track"><div class="bar-fill b" style="width:${Math.round(totalB/maxVal*100)}%">${fmt(totalB)}</div></div>
+    </div>
+  `;
+
+  if (winner === 'A') {
+    document.getElementById('diffBox').innerHTML = `공시지원금+약정이 <strong>${fmt(diff)}</strong> 더 저렴합니다. 19개월부터 선택약정이 추가되어 마지막 6개월은 자급제와 동일한 ${combPct}% 할인이 적용돼요. 초기비용이 낮은 덕분에 전체 합산이 유리합니다.`;
+  } else {
+    document.getElementById('diffBox').innerHTML = `자급제+선택약정이 <strong>${fmt(diff)}</strong> 더 저렴합니다. 공시지원금은 18개월간 선택약정 없이 가족할인 ${famPct}%만 적용되는 반면, 자급제는 처음부터 ${combPct}% 할인이 적용돼 누적 요금 차이가 초기비용 차이를 넘어섭니다.`;
+  }
+}
+
+['planA','planB','plan109','costA','costB'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calc);
+});
+calc();
+</script>
+</body>
+</html>
