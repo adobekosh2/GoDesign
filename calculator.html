@@ -239,6 +239,15 @@ function getPos(e) {
 
 function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
 
+/* snap canvas coords to image bounds (PAD ~ canvas-PAD) */
+function snapToImg(p) {
+  const PAD = parseInt(canvas.dataset.pad) || 0;
+  return {
+    x: clamp(p.x, PAD, canvas.width - PAD),
+    y: clamp(p.y, PAD, canvas.height - PAD)
+  };
+}
+
 function setHint() {
   const h = document.getElementById('hintBar');
   if (phase === 0) h.textContent = '이미지를 클릭해 좌상단 점을 찍으세요';
@@ -270,13 +279,16 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
-  /* placing points */
+  /* placing points — snap to image bounds */
+  const PAD = parseInt(canvas.dataset.pad) || 0;
+  const sp = snapToImg(p);
+
   if (phase === 0) {
-    pendingP1 = { x: p.x, y: p.y };
+    pendingP1 = sp;
     phase = 1; setHint(); redraw();
   } else if (phase === 1) {
-    const x1 = Math.min(pendingP1.x, p.x), y1 = Math.min(pendingP1.y, p.y);
-    const x2 = Math.max(pendingP1.x, p.x), y2 = Math.max(pendingP1.y, p.y);
+    const x1 = Math.min(pendingP1.x, sp.x), y1 = Math.min(pendingP1.y, sp.y);
+    const x2 = Math.max(pendingP1.x, sp.x), y2 = Math.max(pendingP1.y, sp.y);
     if (Math.abs(x2 - x1) < 4 || Math.abs(y2 - y1) < 4) return;
     areas.push({ x1, y1, x2, y2, href: '' });
     phase = 0; pendingP1 = null; setHint();
@@ -287,23 +299,25 @@ canvas.addEventListener('mousedown', e => {
 /* MOUSE MOVE */
 canvas.addEventListener('mousemove', e => {
   const p = getPos(e);
-  mousePos = p;
+  mousePos = snapToImg(p);
 
   if (dragState !== null) {
     const a = areas[dragState.areaIdx];
-    const dx = p.x - dragState.ox, dy = p.y - dragState.oy;
-    dragState.ox = p.x; dragState.oy = p.y;
+    const sp = snapToImg(p);
+    const dx = sp.x - dragState.ox, dy = sp.y - dragState.oy;
+    dragState.ox = sp.x; dragState.oy = sp.y;
+    const PAD = parseInt(canvas.dataset.pad) || 0;
+    const ix1 = PAD, iy1 = PAD, ix2 = canvas.width - PAD, iy2 = canvas.height - PAD;
     if (dragState.handle === 'tl') {
-      a.x1 = clamp(a.x1 + dx, 0, a.x2 - 4);
-      a.y1 = clamp(a.y1 + dy, 0, a.y2 - 4);
+      a.x1 = clamp(a.x1 + dx, ix1, a.x2 - 4);
+      a.y1 = clamp(a.y1 + dy, iy1, a.y2 - 4);
     } else if (dragState.handle === 'br') {
-      a.x2 = clamp(a.x2 + dx, a.x1 + 4, canvas.width);
-      a.y2 = clamp(a.y2 + dy, a.y1 + 4, canvas.height);
+      a.x2 = clamp(a.x2 + dx, a.x1 + 4, ix2);
+      a.y2 = clamp(a.y2 + dy, a.y1 + 4, iy2);
     } else if (dragState.handle === 'move') {
-      const PAD = parseInt(canvas.dataset.pad) || 0;
       const w = a.x2 - a.x1, h = a.y2 - a.y1;
-      a.x1 = clamp(a.x1 + dx, PAD, canvas.width - PAD - w);
-      a.y1 = clamp(a.y1 + dy, PAD, canvas.height - PAD - h);
+      a.x1 = clamp(a.x1 + dx, ix1, ix2 - w);
+      a.y1 = clamp(a.y1 + dy, iy1, iy2 - h);
       a.x2 = a.x1 + w; a.y2 = a.y1 + h;
     }
     redraw(); updateUI(); return;
@@ -397,15 +411,17 @@ function drawHandle(x, y, color) {
   ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.stroke();
 }
 
-/* real pixel coords (reverse canvas scale + padding) */
+/* real pixel coords (reverse canvas scale + padding, min 0) */
 function realC(a) {
   const sc = parseFloat(canvas.dataset.sc) || 1;
   const PAD = parseInt(canvas.dataset.pad) || 0;
+  const iw = Math.round(imgEl.width * sc);
+  const ih = Math.round(imgEl.height * sc);
   return [
-    Math.round((a.x1 - PAD) / sc),
-    Math.round((a.y1 - PAD) / sc),
-    Math.round((a.x2 - PAD) / sc),
-    Math.round((a.y2 - PAD) / sc)
+    clamp(Math.round((a.x1 - PAD) / sc), 0, imgEl.width),
+    clamp(Math.round((a.y1 - PAD) / sc), 0, imgEl.height),
+    clamp(Math.round((a.x2 - PAD) / sc), 0, imgEl.width),
+    clamp(Math.round((a.y2 - PAD) / sc), 0, imgEl.height)
   ];
 }
 
