@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Landing Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Pretendard:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0e0e;--surface:#181818;--surface2:#222;--border:rgba(255,255,255,.08);
+  --border-h:rgba(255,255,255,.16);--text:#f0ede8;--muted:#888;--dim:#444;
+  --accent:#c8f060;--accent-d:rgba(200,240,96,.12);--accent-b:rgba(200,240,96,.25);
+  --red:#ff6b6b;--blue:#60b8f0;
+  --mono:'DM Mono',monospace;--sans:'Pretendard',sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;-webkit-font-smoothing:antialiased;min-height:100vh}
+
+.nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.nav-tab{flex:1;padding:16px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.nav-tab:hover{color:var(--text);background:var(--surface2)}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.panel{display:none;padding:2rem;max-width:500px;margin:0 auto}
+.panel.wide{max-width:100%;padding:1.5rem 2rem}
+
+/* VW */
+.badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--accent);background:var(--accent-d);border:1px solid var(--accent-b);border-radius:100px;padding:4px 10px;margin-bottom:1.5rem}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sec-label{font-size:11px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;margin-bottom:.75rem}
+.input-row{display:flex;align-items:baseline;gap:6px;margin-bottom:1rem}
+input[type="number"]{font-family:var(--mono);font-size:48px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;width:210px;-moz-appearance:textfield}
+input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
+.px-unit{font-family:var(--mono);font-size:20px;color:var(--muted)}
+input[type="range"]{-webkit-appearance:none;width:100%;height:2px;background:var(--border-h);border-radius:2px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);transition:transform .15s}
+input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer}
+.slider-ticks{display:flex;justify-content:space-between;margin-top:6px;margin-bottom:2rem}
+.slider-ticks span{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.result-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem}
+.result-num{font-family:var(--mono);font-size:52px;font-weight:500;color:var(--accent);line-height:1}
+.formula-box{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;margin-bottom:1.5rem;line-height:2}
+.formula-box .hi{color:var(--text)}
+.btn-accent{width:100%;padding:14px;font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:.04em;color:var(--bg);background:var(--accent);border:none;border-radius:12px;cursor:pointer;transition:all .15s}
+.btn-accent:hover{background:#d4f570;transform:translateY(-1px)}
+.btn-accent:active{transform:scale(.98)}
+.btn-accent.done{background:#5af0a0}
+.foot-note{text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:1.5rem}
+
+/* IMAGE MAP */
+.upload-zone{border:1.5px dashed var(--border-h);border-radius:14px;padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:all .2s}
+.upload-zone:hover,.upload-zone.over{border-color:var(--accent);background:var(--accent-d)}
+.upload-zone .icon{font-size:36px;margin-bottom:.75rem}
+.upload-zone p{font-size:13px;color:var(--muted);margin-bottom:.25rem}
+.upload-zone small{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:.75rem}
+.tool-btn{padding:7px 14px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.tool-btn:hover{color:var(--text);border-color:var(--border-h)}
+.tool-btn.danger{color:var(--red)}
+.tool-btn.danger:hover{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.3)}
+.hint-bar{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:.875rem;letter-spacing:.04em;min-height:16px}
+.canvas-wrap{display:flex;justify-content:center;border:1px solid var(--border);border-radius:10px;overflow:hidden;max-width:100%;margin-bottom:1.25rem;background:var(--surface2)}
+canvas{display:block;max-width:100%}
+.areas-list{margin-bottom:1.25rem}
+.area-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.area-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.area-idx{font-family:var(--mono);font-size:10px;color:var(--dim);min-width:18px}
+.area-coords{font-family:var(--mono);font-size:10px;color:var(--dim);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.area-href{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:12px;outline:none;padding:4px 6px;flex:2;min-width:0}
+.area-href:focus{border-bottom-color:var(--accent);color:var(--text)}
+.area-href::placeholder{color:var(--dim)}
+.area-del{background:transparent;border:none;color:var(--dim);cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0;transition:color .15s}
+.area-del:hover{color:var(--red)}
+.code-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;max-height:220px;overflow-y:auto}
+#codeEl{white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <button class="nav-tab active" onclick="switchTab('vw',this)">① vw 계산기</button>
+  <button class="nav-tab" onclick="switchTab('map',this)">② 이미지 맵</button>
+</div>
+
+<!-- ① VW -->
+<div class="panel" id="panel-vw" style="display:block">
+  <div class="badge">MOBILE · 720px @2x</div>
+  <div class="sec-label">디자인 원본 px</div>
+  <div class="input-row">
+    <input type="number" id="pxInput" value="160" min="1" max="9999" oninput="calcVw()" />
+    <span class="px-unit">px</span>
+  </div>
+  <input type="range" id="slider" min="1" max="720" value="160" step="1" oninput="syncSlider(this.value)" />
+  <div class="slider-ticks"><span>1</span><span>180</span><span>360</span><span>540</span><span>720</span></div>
+  <div class="result-card">
+    <div class="sec-label">결과값</div>
+    <div class="result-num" id="resultVal">22.22vw</div>
+  </div>
+  <div class="formula-box">
+    <div>① <span class="hi" id="f1a">160</span>px ÷ 2 = <span class="hi" id="f1b">80</span>px</div>
+    <div>② <span class="hi" id="f2a">80</span>px ÷ 360px × 100 = <span class="hi" id="f2b">22.22</span>vw</div>
+  </div>
+  <button class="btn-accent" id="copyVwBtn" onclick="copyVw()">복사 — 22.22vw</button>
+  <div class="foot-note">기준: 720px ÷ 2 = 360px viewport</div>
+</div>
+
+<!-- ② IMAGE MAP -->
+<div class="panel wide" id="panel-map" style="display:none">
+  <div id="uploadArea">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">🖼</div>
+      <p>이미지를 드래그하거나 클릭해서 업로드</p>
+      <small>JPG · PNG · GIF · WebP</small>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="loadFile(this)" />
+  </div>
+
+  <div id="editorArea" style="display:none">
+    <div class="toolbar">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.06em">이미지 맵 에디터</span>
+      <span style="flex:1"></span>
+      <button class="tool-btn" onclick="document.getElementById('fileInput').click()">↺ 이미지 변경</button>
+      <button class="tool-btn danger" onclick="clearAll()">✕ 전체 삭제</button>
+    </div>
+    <div class="hint-bar" id="hintBar">이미지를 클릭하거나 드래그해서 영역을 지정하세요</div>
+    <div class="canvas-wrap">
+      <canvas id="mapCanvas"></canvas>
+    </div>
+    <div class="areas-list" id="areasList"></div>
+    <div class="sec-label" style="margin-bottom:.5rem">생성된 HTML 코드</div>
+    <div class="code-wrap"><div id="codeEl">영역을 지정하면 코드가 생성됩니다</div></div>
+    <button class="btn-accent" id="copyCodeBtn" onclick="copyCode()">코드 복사</button>
+  </div>
+</div>
+
+<script>
+/* ── TAB ── */
+function switchTab(id, el) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.style.display = 'none'; });
+  document.querySelectorAll('.nav-tab').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('panel-' + id).style.display = 'block';
+  el.classList.add('active');
+}
+
+/* ── VW ── */
+function syncSlider(v) { document.getElementById('pxInput').value = v; calcVw(); }
+function calcVw() {
+  var raw = parseFloat(document.getElementById('pxInput').value) || 0;
+  document.getElementById('slider').value = Math.min(raw, 720);
+  var half = raw / 2;
+  var vw = parseFloat((half / 360 * 100).toFixed(2));
+  var str = vw + 'vw';
+  document.getElementById('resultVal').textContent = str;
+  document.getElementById('f1a').textContent = raw;
+  document.getElementById('f1b').textContent = half;
+  document.getElementById('f2a').textContent = half;
+  document.getElementById('f2b').textContent = vw;
+  document.getElementById('copyVwBtn').textContent = '복사 — ' + str;
+  document.getElementById('copyVwBtn').classList.remove('done');
+}
+function copyVw() {
+  var v = document.getElementById('resultVal').textContent;
+  copyText(v, function() {
+    var b = document.getElementById('copyVwBtn');
+    b.textContent = '복사됨 ✓'; b.classList.add('done');
+    setTimeout(calcVw, 1800);
+  });
+}
+calcVw();
+
+/* ── COPY UTIL ── */
+function copyText(text, onSuccess) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(function() { fallbackCopy(text, onSuccess); });
+  } else {
+    fallbackCopy(text, onSuccess);
+  }
+}
+function fallbackCopy(text, onSuccess) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); onSuccess(); } catch(e) { alert('복사 실패: 직접 선택해서 복사해주세요'); }
+  document.body.removeChild(ta);
+}
+
+/* ── IMAGE MAP ── */
+var canvas = document.getElementById('mapCanvas');
+var ctx = canvas.getContext('2d');
+var COLORS = ['#60b8f0','#ff6b6b','#f0a060','#b060f0','#60f0c8','#f060b8','#f0e060'];
+var HANDLE_R = 7;
+var DEL_R = 8;
+
+var imgEl = null;
+var areas = [];
+var phase = 0;
+var pendingP1 = null;
+var mousePos = null;
+var dragState = null;
+
+/* upload */
+var dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('over'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadFileObj(e.dataTransfer.files[0]);
+});
+function loadFile(inp) { if (inp.files[0]) loadFileObj(inp.files[0]); }
+function loadFileObj(file) {
+  var r = new FileReader();
+  r.onload = function(e) {
+    imgEl = new Image();
+    imgEl.onload = function() {
+      var PAD = 24;
+      var maxW = Math.min(window.innerWidth - 80, 1400) - PAD * 2;
+      var sc = Math.min(1, maxW / imgEl.width);
+      var iw = Math.round(imgEl.width * sc);
+      var ih = Math.round(imgEl.height * sc);
+      canvas.width = iw + PAD * 2;
+      canvas.height = ih + PAD * 2;
+      canvas.dataset.sc = sc;
+      canvas.dataset.pad = PAD;
+      areas = []; phase = 0; pendingP1 = null;
+      document.getElementById('uploadArea').style.display = 'none';
+      document.getElementById('editorArea').style.display = 'block';
+      setHint(); redraw(); updateUI();
+    };
+    imgEl.src = e.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function getPos(e) {
+  var r = canvas.getBoundingClientRect();
+  var ex = e.touches ? e.touches[0].clientX : e.clientX;
+  var ey = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: ex - r.left, y: ey - r.top };
+}
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function snapToImg(p) {
+  var PAD = parseInt(canvas.dataset.pad) || 0;
+  return {
+    x: clamp(p.x, PAD, canvas.width - PAD),
+    y: clamp(p.y, PAD, canvas.height - PAD)
+  };
+}
+function setHint() {
+  var h = document.getElementById('hintBar');
+  if (phase === 0) h.textContent = '이미지를 클릭하거나 드래그해서 영역을 지정하세요';
+  else h.textContent = '마우스를 떼거나 두 번째 클릭으로 사각형을 완성하세요 (ESC로 취소)';
+}
+
+/* hit test */
+function hitTest(p) {
+  for (var i = areas.length - 1; i >= 0; i--) {
+    var a = areas[i];
+    /* delete button — top right */
+    if (Math.hypot(p.x - a.x2, p.y - a.y1) <= DEL_R + 2) return { areaIdx: i, handle: 'del' };
+    /* handles */
+    if (Math.hypot(p.x - a.x1, p.y - a.y1) <= HANDLE_R + 2) return { areaIdx: i, handle: 'tl' };
+    if (Math.hypot(p.x - a.x2, p.y - a.y2) <= HANDLE_R + 2) return { areaIdx: i, handle: 'br' };
+    /* interior → move */
+    if (p.x > a.x1 && p.x < a.x2 && p.y > a.y1 && p.y < a.y2) return { areaIdx: i, handle: 'move' };
+  }
+  return null;
+}
+
+/* MOUSE DOWN */
+canvas.addEventListener('mousedown', function(e) {
+  var p = getPos(e);
+  var hit = hitTest(p);
+  if (hit) {
+    if (hit.handle === 'del') { delArea(hit.areaIdx); e.preventDefault(); return; }
+    dragState = { areaIdx: hit.areaIdx, handle: hit.handle, ox: p.x, oy: p.y };
+    canvas.style.cursor = 'grabbing';
+    e.preventDefault();
+    return;
+  }
+  var sp = snapToImg(p);
+  if (phase === 0) {
+    pendingP1 = sp;
+    phase = 1; setHint(); redraw();
+  }
+});
+
+/* MOUSE MOVE */
+canvas.addEventListener('mousemove', function(e) {
+  var p = getPos(e);
+  mousePos = snapToImg(p);
+
+  if (dragState !== null) {
+    var a = areas[dragState.areaIdx];
+    var sp = snapToImg(p);
+    var dx = sp.x - dragState.ox;
+    var dy = sp.y - dragState.oy;
+    dragState.ox = sp.x; dragState.oy = sp.y;
+    var PAD = parseInt(canvas.dataset.pad) || 0;
+    var ix1 = PAD, iy1 = PAD, ix2 = canvas.width - PAD, iy2 = canvas.height - PAD;
+    if (dragState.handle === 'tl') {
+      a.x1 = clamp(a.x1 + dx, ix1, a.x2 - 4);
+      a.y1 = clamp(a.y1 + dy, iy1, a.y2 - 4);
+    } else if (dragState.handle === 'br') {
+      a.x2 = clamp(a.x2 + dx, a.x1 + 4, ix2);
+      a.y2 = clamp(a.y2 + dy, a.y1 + 4, iy2);
+    } else if (dragState.handle === 'move') {
+      var w = a.x2 - a.x1, h = a.y2 - a.y1;
+      a.x1 = clamp(a.x1 + dx, ix1, ix2 - w);
+      a.y1 = clamp(a.y1 + dy, iy1, iy2 - h);
+      a.x2 = a.x1 + w; a.y2 = a.y1 + h;
+    }
+    redraw(); updateUI(); return;
+  }
+
+  var hit = hitTest(p);
+  if (hit && hit.handle === 'del') canvas.style.cursor = 'pointer';
+  else if (hit && hit.handle === 'move') canvas.style.cursor = 'move';
+  else if (hit) canvas.style.cursor = 'grab';
+  else canvas.style.cursor = 'crosshair';
+
+  redraw();
+});
+
+/* MOUSE UP */
+canvas.addEventListener('mouseup', function(e) {
+  if (dragState) { dragState = null; canvas.style.cursor = 'crosshair'; redraw(); updateUI(); return; }
+  if (phase === 1 && pendingP1) {
+    var sp = snapToImg(getPos(e));
+    var x1 = Math.min(pendingP1.x, sp.x), y1 = Math.min(pendingP1.y, sp.y);
+    var x2 = Math.max(pendingP1.x, sp.x), y2 = Math.max(pendingP1.y, sp.y);
+    if (Math.abs(x2 - x1) < 4 || Math.abs(y2 - y1) < 4) return;
+    areas.push({ x1: x1, y1: y1, x2: x2, y2: y2, href: '' });
+    phase = 0; pendingP1 = null; setHint();
+    redraw(); updateUI();
+  }
+});
+
+canvas.addEventListener('mouseleave', function() { mousePos = null; if (!dragState) redraw(); });
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && phase === 1) { phase = 0; pendingP1 = null; setHint(); redraw(); }
+});
+
+/* REDRAW */
+function redraw() {
+  if (!imgEl) return;
+  var PAD = parseInt(canvas.dataset.pad) || 0;
+  var iw = canvas.width - PAD * 2;
+  var ih = canvas.height - PAD * 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(120,120,120,0.15)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(imgEl, PAD, PAD, iw, ih);
+
+  areas.forEach(function(a, i) {
+    var c = COLORS[i % COLORS.length];
+    ctx.strokeStyle = c; ctx.fillStyle = c + '2a'; ctx.lineWidth = 1.5;
+    ctx.fillRect(a.x1, a.y1, a.x2 - a.x1, a.y2 - a.y1);
+    ctx.strokeRect(a.x1, a.y1, a.x2 - a.x1, a.y2 - a.y1);
+    ctx.fillStyle = c;
+    ctx.font = 'bold 11px DM Mono,monospace';
+    ctx.fillText(i + 1, a.x1 + 5, a.y1 + 15);
+    drawHandle(a.x1, a.y1, c);
+    drawHandle(a.x2, a.y2, c);
+    drawDelBtn(a.x2, a.y1);
+  });
+
+  if (phase === 1 && pendingP1) {
+    drawHandle(pendingP1.x, pendingP1.y, '#c8f060');
+    if (mousePos) {
+      var x1 = Math.min(pendingP1.x, mousePos.x), y1 = Math.min(pendingP1.y, mousePos.y);
+      var w = Math.abs(mousePos.x - pendingP1.x), h = Math.abs(mousePos.y - pendingP1.y);
+      ctx.save();
+      ctx.globalAlpha = 0.6;
+      ctx.fillStyle = 'rgb(102,102,102)';
+      ctx.fillRect(x1, y1, w, h);
+      ctx.strokeStyle = 'rgb(51,51,51)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+      ctx.strokeRect(x1, y1, w, h);
+      ctx.restore();
+      drawHandle(mousePos.x, mousePos.y, '#c8f060');
+    }
+  }
+}
+
+function drawHandle(x, y, color) {
+  ctx.fillStyle = 'rgba(180,180,180,0.25)';
+  ctx.beginPath(); ctx.arc(x, y, HANDLE_R + 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, HANDLE_R + 3, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawDelBtn(x, y) {
+  ctx.fillStyle = 'rgba(255,107,107,0.85)';
+  ctx.beginPath(); ctx.arc(x, y, DEL_R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, DEL_R, 0, Math.PI * 2); ctx.stroke();
+  var s = 3.5;
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x-s, y-s); ctx.lineTo(x+s, y+s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+s, y-s); ctx.lineTo(x-s, y+s); ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+function realC(a) {
+  var sc = parseFloat(canvas.dataset.sc) || 1;
+  var PAD = parseInt(canvas.dataset.pad) || 0;
+  return [
+    clamp(Math.round((a.x1 - PAD) / sc), 0, imgEl.width),
+    clamp(Math.round((a.y1 - PAD) / sc), 0, imgEl.height),
+    clamp(Math.round((a.x2 - PAD) / sc), 0, imgEl.width),
+    clamp(Math.round((a.y2 - PAD) / sc), 0, imgEl.height)
+  ];
+}
+
+function updateUI() {
+  var list = document.getElementById('areasList');
+  list.innerHTML = '';
+  areas.forEach(function(a, i) {
+    var c = COLORS[i % COLORS.length];
+    var rc = realC(a);
+    var d = document.createElement('div'); d.className = 'area-item';
+    d.innerHTML =
+      '<div class="area-dot" style="background:' + c + '"></div>' +
+      '<span class="area-idx">' + (i+1) + '</span>' +
+      '<span class="area-coords">' + rc[0] + ',' + rc[1] + ' → ' + rc[2] + ',' + rc[3] + '</span>' +
+      '<input class="area-href" type="text" placeholder="href" value="' + a.href + '" data-idx="' + i + '" />' +
+      '<button class="area-del" data-idx="' + i + '">✕</button>';
+    list.appendChild(d);
+  });
+  list.querySelectorAll('.area-href').forEach(function(inp) {
+    inp.addEventListener('input', function() {
+      areas[parseInt(this.dataset.idx)].href = this.value;
+      renderCode();
+    });
+  });
+  list.querySelectorAll('.area-del').forEach(function(btn) {
+    btn.addEventListener('click', function() { delArea(parseInt(this.dataset.idx)); });
+  });
+  renderCode();
+}
+
+function renderCode() {
+  var el = document.getElementById('codeEl');
+  if (!areas.length) { el.textContent = '영역을 지정하면 코드가 생성됩니다'; return; }
+  el.textContent = buildCode();
+}
+
+function buildCode() {
+  var lines = [
+    '<img src="image.jpg" usemap="#mymap" alt="">',
+    '<map name="mymap">'
+  ];
+  areas.forEach(function(a) {
+    var rc = realC(a);
+    lines.push('  <area shape="rect" coords="' + rc.join(',') + '" href="' + (a.href || '#') + '" alt="">');
+  });
+  lines.push('</map>');
+  return lines.join('\n');
+}
+
+function delArea(i) { areas.splice(i, 1); redraw(); updateUI(); }
+function clearAll() { areas = []; phase = 0; pendingP1 = null; setHint(); redraw(); updateUI(); }
+
+function copyCode() {
+  if (!areas.length) return;
+  copyText(buildCode(), function() {
+    var b = document.getElementById('copyCodeBtn');
+    var orig = b.textContent;
+    b.textContent = '복사됨 ✓';
+    setTimeout(function() { b.textContent = orig; }, 1800);
+  });
+}
+</script>
+</body>
+</html>
