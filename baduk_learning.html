@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>바둑 입문 — 처음부터 차근차근</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #faf9f7;
+  --bg2: #f1efe8;
+  --bg3: #e8e6de;
+  --text: #1a1a18;
+  --text2: #5a5a56;
+  --text3: #9a9a94;
+  --border: rgba(0,0,0,0.12);
+  --border2: rgba(0,0,0,0.22);
+  --info: #185fa5;
+  --info-bg: #e6f1fb;
+  --radius: 10px;
+  --radius-lg: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1b18; --bg2: #262520; --bg3: #2e2d28;
+    --text: #e8e6de; --text2: #9a9894; --text3: #6a6a64;
+    --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+    --info: #85b7eb; --info-bg: rgba(24,95,165,0.18);
+  }
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', 'Malgun Gothic', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+.page { max-width: 740px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+.header { text-align: center; padding: 2.5rem 0 2rem; border-bottom: 0.5px solid var(--border); margin-bottom: 2rem; }
+.header-badge { display: inline-block; background: var(--info-bg); color: var(--info); font-size: 12px; padding: 4px 12px; border-radius: 20px; margin-bottom: .75rem; font-weight: 500; }
+.header h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+.header p { font-size: 15px; color: var(--text2); }
+
+.step-nav { display: flex; gap: 6px; margin-bottom: 2rem; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.step-nav::-webkit-scrollbar { display: none; }
+.step-btn { flex: 1; min-width: 80px; padding: 10px 6px 8px; border: 0.5px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text2); font-size: 12px; cursor: pointer; text-align: center; transition: all .15s; white-space: nowrap; font-family: inherit; }
+.step-btn .num { display: block; font-size: 18px; margin-bottom: 3px; filter: grayscale(1); opacity: .5; transition: all .15s; }
+.step-btn.active { border-color: var(--border2); background: var(--bg2); color: var(--text); font-weight: 500; }
+.step-btn.active .num, .step-btn.done .num { filter: none; opacity: .9; }
+.step-btn:hover:not(.active) { background: var(--bg2); }
+
+.lesson { display: none; animation: fadeIn .2s ease; }
+.lesson.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+.lesson-title { font-size: 22px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.3px; }
+.lesson-desc { font-size: 14px; color: var(--text2); line-height: 1.8; margin-bottom: 1.5rem; }
+.highlight { color: var(--info); font-weight: 500; }
+
+.rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-bottom: 1.5rem; }
+.rule-card { background: var(--bg2); border-radius: var(--radius); padding: .875rem 1rem; border: 0.5px solid var(--border); }
+.rule-card .icon { font-size: 22px; margin-bottom: 6px; display: block; }
+.rule-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.rule-card p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+.board-wrap { display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.board-section { flex: 0 0 auto; }
+.info-section { flex: 1; min-width: 180px; }
+
+canvas { display: block; border-radius: var(--radius); box-shadow: 0 2px 16px rgba(0,0,0,0.12); cursor: none; }
+
+.status-box { background: var(--bg2); border-radius: var(--radius); padding: .625rem .875rem; font-size: 13px; color: var(--text2); margin-bottom: .75rem; min-height: 40px; border: 0.5px solid var(--border); line-height: 1.6; }
+.status-box strong, .status-box span { color: var(--text); font-weight: 600; }
+
+.score-row { display: flex; gap: 10px; margin-bottom: .75rem; }
+.score-pill { flex: 1; text-align: center; padding: .625rem .5rem; border-radius: var(--radius); background: var(--bg2); border: 0.5px solid var(--border); font-size: 13px; color: var(--text2); }
+.score-pill .num { font-size: 22px; font-weight: 600; color: var(--text); display: block; }
+
+.tip-card { background: var(--bg2); border-radius: var(--radius); padding: .75rem .875rem; margin-bottom: .625rem; font-size: 13px; color: var(--text2); line-height: 1.65; border: 0.5px solid var(--border); }
+.tip-card strong { color: var(--text); font-weight: 600; display: block; margin-bottom: 3px; }
+
+.controls { display: flex; gap: 8px; margin-top: .875rem; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border: 0.5px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text); font-size: 13px; cursor: pointer; transition: all .15s; font-family: inherit; font-weight: 500; }
+.btn:hover { background: var(--bg2); border-color: var(--border2); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--text); color: var(--bg); border-color: transparent; }
+.btn.primary:hover { opacity: .85; }
+.btn.danger { color: #c03535; border-color: rgba(192,53,53,.3); }
+.btn.danger:hover { background: rgba(192,53,53,.06); }
+.btn:disabled { opacity: .38; cursor: not-allowed; transform: none !important; }
+
+.board-labels { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: .75rem; }
+.board-label { font-size: 12px; color: var(--text3); text-align: center; background: var(--bg2); padding: 4px 6px; border-radius: 6px; border: 0.5px solid var(--border); }
+.board-label span { color: var(--text2); font-weight: 500; display: block; }
+
+.final-score { display: none; margin-top: .75rem; }
+.final-score.show { display: block; }
+
+/* AI lesson */
+.difficulty-row { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+.diff-btn { flex:1; padding: 10px 8px; border: 0.5px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text2); font-size: 13px; cursor: pointer; font-family: inherit; transition: all .15s; text-align: center; }
+.diff-btn .dlabel { font-size: 11px; color: var(--text3); display: block; margin-top: 3px; }
+.diff-btn.selected { border-color: var(--border2); background: var(--bg2); color: var(--text); font-weight: 500; }
+.diff-btn.selected .dlabel { color: var(--text2); }
+.diff-btn:hover:not(.selected) { background: var(--bg2); }
+
+.ai-thinking { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); margin-bottom: .75rem; padding: .5rem .75rem; background: var(--bg2); border-radius: var(--radius); border: 0.5px solid var(--border); }
+.ai-thinking.show { display: flex; }
+.dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--text3); animation: blink 1.2s infinite; margin: 0 1px; }
+.dots span:nth-child(2) { animation-delay: .2s; }
+.dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+.pass-info { font-size: 12px; color: var(--text3); margin-top: 4px; min-height: 18px; }
+
+@media (max-width: 480px) {
+  .rule-grid { grid-template-columns: 1fr; }
+  .board-wrap { flex-direction: column; }
+  .info-section { width: 100%; }
+  .header h1 { font-size: 22px; }
+  .difficulty-row { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-badge">🏯 입문 가이드</div>
+    <h1>바둑, 처음부터 배우기</h1>
+    <p>4,000년 역사의 전략 보드 게임 — 단계별로 차근차근</p>
+  </div>
+
+  <div class="step-nav" id="stepNav"></div>
+
+  <!-- L1 -->
+  <div class="lesson active" id="l1">
+    <div class="lesson-title">바둑이란 무엇인가요?</div>
+    <div class="lesson-desc">바둑은 두 사람이 번갈아 가며 돌을 놓아 <span class="highlight">더 많은 집(영역)</span>을 차지하는 게임입니다. 약 4,000년의 역사를 가진 세계에서 가장 오래된 전략 보드 게임 중 하나입니다.</div>
+    <div class="rule-grid">
+      <div class="rule-card"><span class="icon">⬛</span><h3>흑과 백</h3><p>두 명이 각각 검은 돌(흑)과 흰 돌(백)을 가지고 대결합니다. 흑이 먼저 시작합니다.</p></div>
+      <div class="rule-card"><span class="icon">🏠</span><h3>집 만들기</h3><p>돌로 빈 칸을 둘러싸면 그 안이 내 집이 됩니다. 집이 더 많은 쪽이 이깁니다.</p></div>
+      <div class="rule-card"><span class="icon">🎯</span><h3>교차점에 놓기</h3><p>돌은 바둑판의 선이 교차하는 점 위에 놓습니다. 한 번 놓은 돌은 움직이지 않습니다.</p></div>
+      <div class="rule-card"><span class="icon">🏆</span><h3>집 계산</h3><p>게임이 끝나면 각자의 집 수를 세어 많은 쪽이 승리합니다.</p></div>
+    </div>
+    <canvas id="c1" width="288" height="288"></canvas>
+    <div class="tip-card" style="margin-top:.75rem"><strong>💡 직접 해보세요</strong>바둑판에 마우스를 올리면 돌 위치가 미리 보입니다. 클릭해서 놓아보세요!</div>
+    <div class="controls">
+      <button class="btn danger" onclick="resetBoard(1)">초기화</button>
+      <button class="btn primary" onclick="goLesson(2)">다음: 바둑판 구조 →</button>
+    </div>
+  </div>
+
+  <!-- L2 -->
+  <div class="lesson" id="l2">
+    <div class="lesson-title">바둑판의 구조</div>
+    <div class="lesson-desc">바둑판은 <span class="highlight">19×19줄</span>로 이루어진 격자입니다. 처음엔 9×9 작은 판으로 연습하면 좋아요.</div>
+    <div class="board-wrap">
+      <div class="board-section">
+        <canvas id="c2" width="260" height="260"></canvas>
+        <div class="board-labels">
+          <div class="board-label">모서리<span>귀(隅)</span></div>
+          <div class="board-label">가장자리<span>변(邊)</span></div>
+          <div class="board-label">중심<span>중앙(中央)</span></div>
+        </div>
+      </div>
+      <div class="info-section">
+        <div class="tip-card"><strong>화점 (花點)</strong>바둑판에 표시된 점들을 화점이라 합니다. 방향 파악과 포석의 기준점이에요.</div>
+        <div class="tip-card"><strong>천원 (天元)</strong>바둑판 정중앙의 점입니다. 9×9판에서는 5-5에 위치합니다.</div>
+        <div class="tip-card"><strong>귀 → 변 → 중앙</strong>모서리(귀)에서 집을 짓는 게 가장 효율적입니다.</div>
+        <div class="controls" style="margin-top:0"><button class="btn danger" onclick="resetBoard(2)">초기화</button></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="goLesson(1)">← 이전</button>
+      <button class="btn primary" onclick="goLesson(3)">다음: 집이란? →</button>
+    </div>
+  </div>
+
+  <!-- L3 -->
+  <div class="lesson" id="l3">
+    <div class="lesson-title">집이란 무엇인가요?</div>
+    <div class="lesson-desc">돌로 빈 공간을 완전히 둘러싸면 그 안쪽 교차점이 <span class="highlight">'집'</span>이 됩니다. 집의 수가 많은 쪽이 이깁니다.</div>
+    <div class="board-wrap">
+      <div class="board-section">
+        <canvas id="c3" width="260" height="260"></canvas>
+        <div class="controls" style="margin-top:.625rem">
+          <button class="btn" onclick="showTerritory()">집 보기 토글</button>
+          <button class="btn danger" onclick="resetBoard(3)">초기화</button>
+        </div>
+      </div>
+      <div class="info-section">
+        <div id="territory-status" class="status-box">흑·백 돌을 놓고 <strong>집 보기 토글</strong>을 눌러보세요.</div>
+        <div class="score-row">
+          <div class="score-pill">⬛ 흑 집<span class="num" id="s3-b">0</span></div>
+          <div class="score-pill">⬜ 백 집<span class="num" id="s3-w">0</span></div>
+        </div>
+        <div class="tip-card"><strong>집 계산 방법</strong>내 돌로 완전히 둘러싸인 빈 교차점의 수가 내 집입니다.</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="goLesson(2)">← 이전</button>
+      <button class="btn primary" onclick="goLesson(4)">다음: 단수와 따냄 →</button>
+    </div>
+  </div>
+
+  <!-- L4 -->
+  <div class="lesson" id="l4">
+    <div class="lesson-title">단수와 따냄</div>
+    <div class="lesson-desc">돌의 주변 빈 교차점을 <span class="highlight">활로(숨구멍)</span>라고 합니다. 활로가 하나만 남으면 <strong>'단수'</strong>, 0이 되면 돌을 <span class="highlight">따냅니다!</span></div>
+    <div class="board-wrap">
+      <div class="board-section">
+        <canvas id="c4" width="260" height="260"></canvas>
+        <div class="controls" style="margin-top:.625rem">
+          <button class="btn" onclick="demoCapture()">단수 예시 보기</button>
+          <button class="btn danger" onclick="resetBoard(4)">초기화</button>
+        </div>
+      </div>
+      <div class="info-section">
+        <div id="capture-status" class="status-box">예시 버튼을 눌러 단수 상황을 확인해보세요.</div>
+        <div class="score-row">
+          <div class="score-pill">⬛ 잡은 돌<span class="num" id="s4-b">0</span></div>
+          <div class="score-pill">⬜ 잡은 돌<span class="num" id="s4-w">0</span></div>
+        </div>
+        <div class="tip-card"><strong>활로(숨구멍)</strong>돌의 상하좌우 빈 교차점입니다. 모두 막으면 돌을 잡을 수 있습니다.</div>
+        <div class="tip-card"><strong>연결의 중요성</strong>돌이 연결되면 활로가 합쳐져서 더 튼튼해집니다!</div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="goLesson(3)">← 이전</button>
+      <button class="btn primary" onclick="goLesson(5)">다음: 자유 연습 →</button>
+    </div>
+  </div>
+
+  <!-- L5 -->
+  <div class="lesson" id="l5">
+    <div class="lesson-title">자유 연습</div>
+    <div class="lesson-desc">배운 내용을 바탕으로 자유롭게 연습해보세요. 흑·백이 번갈아 돌을 놓고, 집을 많이 차지하는 쪽이 이깁니다!</div>
+    <div class="board-wrap">
+      <div class="board-section">
+        <canvas id="c5" width="260" height="260"></canvas>
+      </div>
+      <div class="info-section">
+        <div id="play-status" class="status-box"><strong>⬛ 흑</strong>의 차례입니다</div>
+        <div class="score-row">
+          <div class="score-pill">⬛ 잡은 돌<span class="num" id="s5-b">0</span></div>
+          <div class="score-pill">⬜ 잡은 돌<span class="num" id="s5-w">0</span></div>
+        </div>
+        <div class="tip-card"><strong>전략 팁</strong>귀(모서리)부터 집을 지어보세요. 변·중앙 순으로 발전시키면 좋습니다.</div>
+        <div class="controls" style="margin-top:0">
+          <button class="btn" onclick="scoreGame()">집 계산</button>
+          <button class="btn danger" onclick="resetBoard(5)">처음부터</button>
+        </div>
+        <div id="final-score" class="tip-card final-score"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="goLesson(4)">← 이전</button>
+      <button class="btn primary" onclick="goLesson(6)">다음: AI 대결 →</button>
+    </div>
+  </div>
+
+  <!-- L6: AI Battle -->
+  <div class="lesson" id="l6">
+    <div class="lesson-title">AI와 대결하기 🤖</div>
+    <div class="lesson-desc">드디어 AI와 대결할 차례! 당신은 <span class="highlight">⬛ 흑</span>으로 먼저 둡니다. 난이도를 선택하고 시작하세요.</div>
+
+    <div class="difficulty-row">
+      <button class="diff-btn selected" id="diff-easy" onclick="setDifficulty('easy')">🌱 입문<span class="dlabel">랜덤 AI</span></button>
+      <button class="diff-btn" id="diff-mid" onclick="setDifficulty('mid')">🔥 중급<span class="dlabel">전술 AI</span></button>
+      <button class="diff-btn" id="diff-hard" onclick="setDifficulty('hard')">⚡ 고급<span class="dlabel">전략 AI</span></button>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board-section">
+        <canvas id="c6" width="260" height="260"></canvas>
+        <div class="controls" style="margin-top:.625rem">
+          <button class="btn" id="pass-btn" onclick="playerPass()">패스</button>
+          <button class="btn danger" onclick="resetAI()">다시 시작</button>
+        </div>
+      </div>
+      <div class="info-section">
+        <div id="ai-status" class="status-box"><strong>⬛ 흑(당신)</strong>의 차례입니다</div>
+        <div id="ai-thinking" class="ai-thinking">
+          <span>🤖 AI 생각 중</span>
+          <span class="dots"><span></span><span></span><span></span></span>
+        </div>
+        <div class="score-row">
+          <div class="score-pill">⬛ 잡은 돌<span class="num" id="s6-b">0</span></div>
+          <div class="score-pill">⬜ 잡은 돌<span class="num" id="s6-w">0</span></div>
+        </div>
+        <div id="pass-info" class="pass-info"></div>
+        <div class="tip-card" id="ai-tip"><strong>💡 AI 대결 팁</strong>귀(모서리)를 먼저 선점하세요. 패스는 둘 곳이 없을 때 사용하며, 양측이 연속 패스하면 게임이 끝납니다.</div>
+        <div id="ai-final" class="tip-card final-score"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" onclick="goLesson(5)">← 이전</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────
+const LESSONS = [
+  {id:1,emoji:'🏯',label:'바둑이란?',size:9},
+  {id:2,emoji:'🗺️',label:'판 구조',size:9},
+  {id:3,emoji:'🏠',label:'집이란?',size:9},
+  {id:4,emoji:'⚔️',label:'단수·따냄',size:9},
+  {id:5,emoji:'🎮',label:'자유 연습',size:9},
+  {id:6,emoji:'🤖',label:'AI 대결',size:9},
+];
+
+const states = {};
+function makeState(size) {
+  return { board:Array.from({length:size},()=>Array(size).fill(0)), turn:1, size, captured:[0,0], showTerr:false, hover:null };
+}
+LESSONS.forEach(l => { states[l.id] = makeState(l.size); });
+
+let currentLesson = 1;
+let aiDifficulty = 'easy';
+let aiThinking = false;
+let passCount = 0;
+let gameOver = false;
+
+// ── Nav ─────────────────────────────────────────────────────────────────
+const nav = document.getElementById('stepNav');
+LESSONS.forEach(l => {
+  const b = document.createElement('button');
+  b.className = 'step-btn'+(l.id===1?' active':'');
+  b.id = 'nb'+l.id;
+  b.innerHTML = `<span class="num">${l.emoji}</span>${l.label}`;
+  b.onclick = () => goLesson(l.id);
+  nav.appendChild(b);
+});
+
+function goLesson(id) {
+  document.getElementById('l'+currentLesson).classList.remove('active');
+  document.getElementById('nb'+currentLesson).classList.remove('active');
+  currentLesson = id;
+  document.getElementById('l'+id).classList.add('active');
+  document.getElementById('nb'+id).classList.add('active');
+  document.getElementById('nb'+id).classList.add('done');
+  [1,2,3,4,5,6].forEach(i => drawBoard(i));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── Drawing ─────────────────────────────────────────────────────────────
+function isDark() { return window.matchMedia('(prefers-color-scheme: dark)').matches; }
+
+function getBoardMetrics(id) {
+  const canvas = document.getElementById('c'+id);
+  const s = states[id];
+  const pad = 26;
+  const cell = (canvas.width - pad*2) / (s.size-1);
+  return { canvas, s, n:s.size, pad, cell, ctx:canvas.getContext('2d'), w:canvas.width, h:canvas.height };
+}
+
+function drawBoard(id) {
+  const canvas = document.getElementById('c'+id);
+  if (!canvas) return;
+  const { s, n, pad, cell, ctx, w, h } = getBoardMetrics(id);
+  const dark = isDark();
+
+  ctx.clearRect(0,0,w,h);
+
+  // Board background
+  ctx.fillStyle = dark ? '#2a2520' : '#d4a853';
+  ctx.beginPath(); ctx.roundRect(0,0,w,h,10); ctx.fill();
+
+  // Light wood texture
+  if (!dark) {
+    for(let i=0;i<8;i++){
+      ctx.strokeStyle='rgba(160,110,40,0.07)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(0,i*36+10);
+      ctx.bezierCurveTo(w*0.3,i*36+5,w*0.7,i*36+15,w,i*36+8); ctx.stroke();
+    }
+  }
+
+  // Grid lines
+  const lc = dark?'rgba(255,255,255,0.28)':'rgba(0,0,0,0.55)';
+  ctx.strokeStyle=lc; ctx.lineWidth=0.8;
+  for(let i=0;i<n;i++){
+    const x=pad+i*cell, y=pad+i*cell;
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,pad+(n-1)*cell); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(pad+(n-1)*cell,y); ctx.stroke();
+  }
+
+  // Star points 9×9
+  ctx.fillStyle=lc;
+  [[2,2],[2,6],[6,2],[6,6],[4,4]].forEach(([r,c])=>{
+    ctx.beginPath(); ctx.arc(pad+c*cell,pad+r*cell,3,0,Math.PI*2); ctx.fill();
+  });
+
+  // Territory overlay
+  if(s.showTerr){
+    const terr=calcTerritory(s);
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      if(!terr[r][c]) continue;
+      ctx.fillStyle=terr[r][c]===1?'rgba(0,0,0,0.3)':'rgba(255,255,255,0.5)';
+      const sz=cell*0.72;
+      ctx.fillRect(pad+c*cell-sz/2,pad+r*cell-sz/2,sz,sz);
+    }
+  }
+
+  // Placed stones
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    if(s.board[r][c]) drawStone(ctx,pad+c*cell,pad+r*cell,cell*0.45,s.board[r][c],false);
+  }
+
+  // Ghost hover preview
+  if(s.hover && !gameOver){
+    const {r,c}=s.hover;
+    // Only show ghost if it's the human's turn (or for non-AI boards)
+    const isAIBoard = id===6;
+    const humanTurn = !isAIBoard || (s.turn===1 && !aiThinking);
+    if(humanTurn && r>=0&&r<n&&c>=0&&c<n&&s.board[r][c]===0){
+      const test=s.board.map(row=>[...row]); test[r][c]=s.turn;
+      const opp=s.turn===1?2:1;
+      let wouldCapture=false;
+      [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+        const nr=r+dr,nc=c+dc;
+        if(nr>=0&&nr<n&&nc>=0&&nc<n&&test[nr][nc]===opp){
+          const grp=getGroup(test,nr,nc,n);
+          if(getLiberties(test,grp,n)===0) wouldCapture=true;
+        }
+      });
+      const myGrp=getGroup(test,r,c,n);
+      if(wouldCapture||getLiberties(test,myGrp,n)>0) drawStone(ctx,pad+c*cell,pad+r*cell,cell*0.45,s.turn,true);
+    }
+  }
+}
+
+function drawStone(ctx, x, y, r, color, ghost) {
+  ctx.save();
+  if(ghost) ctx.globalAlpha=0.45;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+  if(color===1){
+    const g=ctx.createRadialGradient(x-r*0.28,y-r*0.28,r*0.05,x+r*0.1,y+r*0.1,r*1.1);
+    g.addColorStop(0,'#4a4a48'); g.addColorStop(0.5,'#1a1a18'); g.addColorStop(1,'#0a0a08');
+    ctx.fillStyle=g; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=0.5; ctx.stroke();
+    if(!ghost){ ctx.beginPath(); ctx.arc(x-r*0.28,y-r*0.28,r*0.22,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fill(); }
+  } else {
+    const g=ctx.createRadialGradient(x-r*0.3,y-r*0.3,r*0.05,x+r*0.1,y+r*0.1,r*1.1);
+    g.addColorStop(0,'#ffffff'); g.addColorStop(0.6,'#e8e6e0'); g.addColorStop(1,'#c8c6c0');
+    ctx.fillStyle=g; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+    if(!ghost){ ctx.beginPath(); ctx.arc(x-r*0.28,y-r*0.28,r*0.2,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+// ── Mouse ───────────────────────────────────────────────────────────────
+function getRC(e, id) {
+  const { canvas, s, n, pad, cell } = getBoardMetrics(id);
+  const rect=canvas.getBoundingClientRect();
+  const sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  const mx=(e.clientX-rect.left)*sx, my=(e.clientY-rect.top)*sy;
+  const c=Math.round((mx-pad)/cell), r=Math.round((my-pad)/cell);
+  if(r<0||r>=n||c<0||c>=n) return null;
+  return {r,c};
+}
+
+function handleMove(e, id) {
+  states[id].hover=getRC(e,id);
+  drawBoard(id);
+}
+function handleLeave(id) {
+  states[id].hover=null;
+  drawBoard(id);
+}
+function handleClick(e, id) {
+  if(id===6 && (aiThinking||gameOver||states[6].turn!==1)) return;
+  const rc=getRC(e,id);
+  if(!rc) return;
+  const ok=placeStone(id,rc.r,rc.c);
+  if(id===6 && ok && !gameOver){
+    passCount=0;
+    updatePassInfo();
+    setTimeout(()=>aiMove(),450);
+  }
+}
+
+// ── Game logic ───────────────────────────────────────────────────────────
+function placeStone(id, r, c) {
+  const s=states[id]; const n=s.size;
+  if(s.board[r][c]!==0) return false;
+  s.board[r][c]=s.turn; s.showTerr=false;
+  const opp=s.turn===1?2:1;
+  let captured=0;
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+    const nr=r+dr,nc=c+dc;
+    if(nr>=0&&nr<n&&nc>=0&&nc<n&&s.board[nr][nc]===opp){
+      const grp=getGroup(s.board,nr,nc,n);
+      if(getLiberties(s.board,grp,n)===0){ grp.forEach(([gr,gc])=>{s.board[gr][gc]=0;}); captured+=grp.length; }
+    }
+  });
+  const myGrp=getGroup(s.board,r,c,n);
+  if(getLiberties(s.board,myGrp,n)===0&&captured===0){ s.board[r][c]=0; return false; }
+  if(captured>0) s.captured[s.turn===1?0:1]+=captured;
+  s.turn=s.turn===1?2:1;
+  updateUI(id,captured);
+  drawBoard(id);
+  return true;
+}
+
+function getGroup(board,r,c,n) {
+  const color=board[r][c],visited=new Set(),stack=[[r,c]];
+  while(stack.length){
+    const [cr,cc]=stack.pop(); const key=cr*n+cc;
+    if(visited.has(key)) continue; visited.add(key);
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=cr+dr,nc=cc+dc;
+      if(nr>=0&&nr<n&&nc>=0&&nc<n&&board[nr][nc]===color&&!visited.has(nr*n+nc)) stack.push([nr,nc]);
+    });
+  }
+  return [...visited].map(k=>[Math.floor(k/n),k%n]);
+}
+
+function getLiberties(board,group,n) {
+  const libs=new Set();
+  group.forEach(([r,c])=>{
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<n&&nc>=0&&nc<n&&board[nr][nc]===0) libs.add(nr*n+nc);
+    });
+  });
+  return libs.size;
+}
+
+function calcTerritory(s) {
+  const n=s.size,terr=Array.from({length:n},()=>Array(n).fill(0)),visited=Array.from({length:n},()=>Array(n).fill(false));
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    if(s.board[r][c]!==0||visited[r][c]) continue;
+    const region=[],stack=[[r,c]]; let borders=new Set();
+    while(stack.length){
+      const [cr,cc]=stack.pop(); if(visited[cr][cc]) continue; visited[cr][cc]=true; region.push([cr,cc]);
+      [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+        const nr=cr+dr,nc=cc+dc; if(nr<0||nr>=n||nc<0||nc>=n) return;
+        if(s.board[nr][nc]!==0) borders.add(s.board[nr][nc]); else if(!visited[nr][nc]) stack.push([nr,nc]);
+      });
+    }
+    if(borders.size===1){ const owner=[...borders][0]; region.forEach(([rr,rc])=>terr[rr][rc]=owner); }
+  }
+  return terr;
+}
+
+// ── AI ────────────────────────────────────────────────────────────────
+function setDifficulty(d) {
+  aiDifficulty=d;
+  ['easy','mid','hard'].forEach(x=>document.getElementById('diff-'+x).classList.remove('selected'));
+  document.getElementById('diff-'+d).classList.add('selected');
+  const tips={
+    easy:'🌱 입문: 무작위로 두는 AI입니다. 기본기를 연습해보세요!',
+    mid:'🔥 중급: 돌을 잡으려 하고 자기 돌을 지킵니다. 방심 금물!',
+    hard:'⚡ 고급: 귀·변·중앙을 전략적으로 활용합니다. 실력을 시험해보세요!'
+  };
+  document.getElementById('ai-tip').innerHTML=`<strong>💡 AI 대결 팁</strong>${tips[d]}`;
+}
+
+function getLegalMoves(board,n) {
+  const moves=[];
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    if(board[r][c]!==0) continue;
+    const test=board.map(row=>[...row]); test[r][c]=2;
+    let cap=false;
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<n&&nc>=0&&nc<n&&test[nr][nc]===1){
+        const grp=getGroup(test,nr,nc,n); if(getLiberties(test,grp,n)===0) cap=true;
+      }
+    });
+    const myGrp=getGroup(test,r,c,n);
+    if(cap||getLiberties(test,myGrp,n)>0) moves.push([r,c]);
+  }
+  return moves;
+}
+
+function aiMove() {
+  const s=states[6];
+  if(gameOver||s.turn!==2) return;
+  aiThinking=true;
+  document.getElementById('ai-thinking').classList.add('show');
+  document.getElementById('pass-btn').disabled=true;
+
+  const delay=700+Math.random()*500;
+  setTimeout(()=>{
+    const n=s.size;
+    const moves=getLegalMoves(s.board,n);
+    let chosen=null;
+
+    if(!moves.length){ aiPass(); return; }
+
+    if(aiDifficulty==='easy'){
+      chosen=moves[Math.floor(Math.random()*moves.length)];
+
+    } else if(aiDifficulty==='mid'){
+      let best=null,bestScore=-Infinity;
+      const cands=moves.slice().sort(()=>Math.random()-.5).slice(0,20);
+      for(const [r,c] of cands){
+        const test=s.board.map(row=>[...row]); test[r][c]=2;
+        let score=0;
+        [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+          const nr=r+dr,nc=c+dc;
+          if(nr>=0&&nr<n&&nc>=0&&nc<n&&test[nr][nc]===1){
+            const grp=getGroup(test,nr,nc,n);
+            if(getLiberties(test,grp,n)===0) score+=grp.length*10;
+          }
+        });
+        score+=getLiberties(test,getGroup(test,r,c,n),n)*0.5;
+        score+=Math.random()*2;
+        if(score>bestScore){bestScore=score;best=[r,c];}
+      }
+      chosen=best;
+
+    } else {
+      // Hard: territory + capture + defense + position
+      const stoneCount=s.board.flat().filter(x=>x!==0).length;
+      let best=null,bestScore=-Infinity;
+      const starPts=new Set([[2,2],[2,6],[6,2],[6,6],[4,4]].map(([r,c])=>r*9+c));
+      const cands=moves.slice().sort(()=>Math.random()-.5).slice(0,30);
+      for(const [r,c] of cands){
+        const test=s.board.map(row=>[...row]); test[r][c]=2;
+        let score=0;
+        // Capture opponent
+        [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+          const nr=r+dr,nc=c+dc;
+          if(nr>=0&&nr<n&&nc>=0&&nc<n&&test[nr][nc]===1){
+            const grp=getGroup(test,nr,nc,n);
+            const libs=getLiberties(test,grp,n);
+            if(libs===0) score+=grp.length*15;
+            else if(libs===1) score+=4; // atari threat
+          }
+        });
+        // Defend own
+        [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+          const nr=r+dr,nc=c+dc;
+          if(nr>=0&&nr<n&&nc>=0&&nc<n&&test[nr][nc]===2){
+            score+=getLiberties(test,getGroup(test,nr,nc,n),n)*1.5;
+          }
+        });
+        // Territory influence
+        for(let rr=0;rr<n;rr++) for(let cc=0;cc<n;cc++){
+          if(test[rr][cc]===2) score+=0.8;
+          else if(test[rr][cc]===0){
+            let inf=0;
+            [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([dr,dc])=>{
+              const nr2=rr+dr,nc2=cc+dc;
+              if(nr2>=0&&nr2<n&&nc2>=0&&nc2<n){
+                if(test[nr2][nc2]===2) inf+=1; else if(test[nr2][nc2]===1) inf-=1;
+              }
+            });
+            if(inf>0) score+=inf*0.12;
+          }
+        }
+        // Opening: prefer corners+star points
+        if(stoneCount<10){
+          if(starPts.has(r*n+c)) score+=8;
+          if((r<=1||r>=n-2)&&(c<=1||c>=n-2)) score+=5;
+        }
+        score+=Math.random()*1.5;
+        if(score>bestScore){bestScore=score;best=[r,c];}
+      }
+      chosen=best;
+    }
+
+    aiThinking=false;
+    document.getElementById('ai-thinking').classList.remove('show');
+    document.getElementById('pass-btn').disabled=false;
+
+    if(chosen){
+      const [r,c]=chosen;
+      placeStone(6,r,c);
+      if(!gameOver) document.getElementById('ai-status').innerHTML='<strong>⬛ 흑(당신)</strong>의 차례입니다';
+    } else {
+      aiPass();
+    }
+  }, delay);
+}
+
+function playerPass() {
+  if(aiThinking||gameOver||states[6].turn!==1) return;
+  passCount++;
+  states[6].turn=2;
+  document.getElementById('ai-status').innerHTML='패스했습니다. AI가 생각 중…';
+  updatePassInfo();
+  if(passCount>=2){ endAIGame(); return; }
+  setTimeout(()=>aiMove(),450);
+}
+
+function aiPass() {
+  aiThinking=false;
+  document.getElementById('ai-thinking').classList.remove('show');
+  document.getElementById('pass-btn').disabled=false;
+  passCount++;
+  states[6].turn=1;
+  updatePassInfo();
+  if(passCount>=2){ endAIGame(); return; }
+  document.getElementById('ai-status').innerHTML='🤖 AI가 패스했습니다. <strong>⬛ 흑(당신)</strong>의 차례입니다';
+}
+
+function updatePassInfo() {
+  const el=document.getElementById('pass-info');
+  el.textContent=passCount>0?`연속 패스: ${passCount}/2 (양측 패스 시 종료)`:'';
+}
+
+function endAIGame() {
+  gameOver=true;
+  const s=states[6];
+  const terr=calcTerritory(s);
+  let bC=0,wC=0;
+  for(let r=0;r<s.size;r++) for(let c=0;c<s.size;c++){
+    if(terr[r][c]===1) bC++; else if(terr[r][c]===2) wC++;
+  }
+  bC+=s.captured[0]; wC+=s.captured[1];
+  const wTotal=wC+5.5; // komi
+  const winner=bC>wTotal?'🎉 당신(흑) 승리!':'🤖 AI(백) 승리!';
+  const box=document.getElementById('ai-final');
+  box.className='tip-card final-score show';
+  box.innerHTML=`<strong>게임 종료!</strong>⬛ 흑: ${bC}집 &nbsp;|&nbsp; ⬜ 백: ${wTotal}집 (집 ${wC} + 덤 5.5)<br><span style="font-size:15px;font-weight:600;color:var(--text)">${winner}</span>`;
+  s.showTerr=true; drawBoard(6);
+  document.getElementById('ai-status').innerHTML='<strong>게임 종료!</strong>';
+  document.getElementById('pass-btn').disabled=true;
+}
+
+function resetAI() {
+  states[6]=makeState(9);
+  gameOver=false; aiThinking=false; passCount=0;
+  document.getElementById('s6-b').textContent=0;
+  document.getElementById('s6-w').textContent=0;
+  document.getElementById('ai-status').innerHTML='<strong>⬛ 흑(당신)</strong>의 차례입니다';
+  document.getElementById('ai-thinking').classList.remove('show');
+  document.getElementById('pass-btn').disabled=false;
+  document.getElementById('pass-info').textContent='';
+  const box=document.getElementById('ai-final');
+  box.className='tip-card final-score'; box.innerHTML='';
+  drawBoard(6);
+}
+
+// ── Common UI updates ─────────────────────────────────────────────────
+function updateUI(id, captured) {
+  if(id===4){
+    const s=states[4];
+    document.getElementById('s4-b').textContent=s.captured[0];
+    document.getElementById('s4-w').textContent=s.captured[1];
+    const who=s.turn===1?'⬛ 흑':'⬜ 백';
+    document.getElementById('capture-status').innerHTML=captured>0
+      ?`<strong>${captured}개의 돌을 따냈습니다!</strong> 이제 ${who}의 차례입니다.`
+      :`${who}의 차례입니다.`;
+  }
+  if(id===5){
+    const s=states[5];
+    document.getElementById('s5-b').textContent=s.captured[0];
+    document.getElementById('s5-w').textContent=s.captured[1];
+    const who=s.turn===1?'<strong>⬛ 흑</strong>':'<strong>⬜ 백</strong>';
+    document.getElementById('play-status').innerHTML=`${who}의 차례입니다`;
+  }
+  if(id===6){
+    const s=states[6];
+    document.getElementById('s6-b').textContent=s.captured[0];
+    document.getElementById('s6-w').textContent=s.captured[1];
+  }
+}
+
+function showTerritory() {
+  const s=states[3]; s.showTerr=!s.showTerr;
+  const terr=calcTerritory(s); let bC=0,wC=0;
+  for(let r=0;r<s.size;r++) for(let c=0;c<s.size;c++){ if(terr[r][c]===1) bC++; else if(terr[r][c]===2) wC++; }
+  document.getElementById('s3-b').textContent=bC;
+  document.getElementById('s3-w').textContent=wC;
+  document.getElementById('territory-status').innerHTML=s.showTerr
+    ?`⬛ 흑 집: <strong>${bC}칸</strong> &nbsp; ⬜ 백 집: <strong>${wC}칸</strong>`
+    :'흑·백 돌을 놓고 <strong>집 보기 토글</strong>을 눌러보세요.';
+  drawBoard(3);
+}
+
+function demoCapture() {
+  const s=states[4];
+  s.board=Array.from({length:9},()=>Array(9).fill(0));
+  s.captured=[0,0]; s.turn=1;
+  s.board[4][4]=2; s.board[3][4]=1; s.board[5][4]=1; s.board[4][3]=1;
+  document.getElementById('s4-b').textContent=0;
+  document.getElementById('s4-w').textContent=0;
+  document.getElementById('capture-status').innerHTML='⬜ <strong>백돌이 단수</strong>입니다! 활로가 오른쪽 하나뿐이에요. 검은 돌로 따내보세요.';
+  drawBoard(4);
+}
+
+function scoreGame() {
+  const s=states[5];
+  const terr=calcTerritory(s); let bC=0,wC=0;
+  for(let r=0;r<s.size;r++) for(let c=0;c<s.size;c++){ if(terr[r][c]===1) bC++; else if(terr[r][c]===2) wC++; }
+  bC+=s.captured[0]; wC+=s.captured[1];
+  const winner=bC>wC?'⬛ 흑 승리!':wC>bC?'⬜ 백 승리!':'무승부!';
+  const box=document.getElementById('final-score');
+  box.className='tip-card final-score show';
+  box.innerHTML=`<strong>집 계산 결과</strong>⬛ 흑: ${bC}집 &nbsp;|&nbsp; ⬜ 백: ${wC}집<br><span style="font-size:15px;font-weight:600;color:var(--text)">${winner}</span>`;
+  s.showTerr=true; drawBoard(5);
+}
+
+function resetBoard(id) {
+  const size=states[id].size;
+  states[id]=makeState(size);
+  drawBoard(id);
+  if(id===3){ document.getElementById('s3-b').textContent=0; document.getElementById('s3-w').textContent=0; document.getElementById('territory-status').innerHTML='흑·백 돌을 놓고 <strong>집 보기 토글</strong>을 눌러보세요.'; }
+  if(id===4){ document.getElementById('s4-b').textContent=0; document.getElementById('s4-w').textContent=0; document.getElementById('capture-status').innerHTML='예시 버튼을 눌러 단수 상황을 확인해보세요.'; }
+  if(id===5){ document.getElementById('s5-b').textContent=0; document.getElementById('s5-w').textContent=0; document.getElementById('play-status').innerHTML='<strong>⬛ 흑</strong>의 차례입니다'; const box=document.getElementById('final-score'); box.className='tip-card final-score'; box.innerHTML=''; }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────
+[1,2,3,4,5,6].forEach(id=>{
+  const c=document.getElementById('c'+id);
+  if(!c) return;
+  c.addEventListener('click', e=>handleClick(e,id));
+  c.addEventListener('mousemove', e=>handleMove(e,id));
+  c.addEventListener('mouseleave', ()=>handleLeave(id));
+  drawBoard(id);
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{
+  [1,2,3,4,5,6].forEach(id=>drawBoard(id));
+});
+</script>
+</body>
+</html>
