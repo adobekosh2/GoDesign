@@ -1,0 +1,1900 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPT 검수 도구</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11; --bg2: #18181c; --bg3: #222228;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #e8e8f0; --text2: #8888a0; --text3: #55556a;
+    --accent: #7c6fff; --accent2: #a594ff;
+    --error: #ff5f5f; --warn: #ffaa44; --ok: #3dd68c; --info: #5bc4f5;
+    --error-bg: rgba(255,95,95,0.1); --warn-bg: rgba(255,170,68,0.1);
+    --ok-bg: rgba(61,214,140,0.1); --info-bg: rgba(91,196,245,0.1);
+    --font: 'Noto Sans KR', sans-serif; --mono: 'JetBrains Mono', monospace;
+    --radius: 10px; --radius-lg: 16px;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* NAV */
+  .nav { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 56px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .nav-logo { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; white-space: nowrap; cursor: pointer; user-select: none; transition: opacity 0.15s; }
+  .nav-logo:hover { opacity: 0.85; }
+  .nav-logo span { color: var(--accent2); }
+  .nav-sep { flex: 1; }
+  .nav-controls { display: flex; align-items: center; gap: 10px; }
+  .mode-toggle { display: flex; align-items: center; gap: 6px; color: var(--text2); font-size: 12px; white-space: nowrap; }
+  .mode-toggle input { accent-color: var(--accent); }
+  .api-key-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .api-key-input { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 10px; border-radius: 6px; width: 195px; outline: none; }
+  .api-key-input:focus { border-color: var(--accent); }
+  .api-key-input::placeholder { color: var(--text3); }
+  .base-url-input { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 6px 10px; border-radius: 6px; width: 240px; outline: none; }
+  .base-url-input:focus { border-color: var(--accent); }
+  .base-url-input::placeholder { color: var(--text3); }
+  .api-test-btn { font-size: 11px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .api-test-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .api-test-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .key-status { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .key-status.ok { background: var(--ok); }
+  .model-select { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-family: var(--font); font-size: 12px; padding: 6px 10px; border-radius: 6px; outline: none; cursor: pointer; }
+  .model-select:focus { border-color: var(--accent); }
+
+  /* MAIN */
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .app.resizing { cursor: col-resize; user-select: none; }
+
+  /* SIDEBAR */
+  .sidebar { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--bg); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-resizer { width: 10px; flex-shrink: 0; cursor: col-resize; position: relative; background: transparent; }
+  .sidebar-resizer::before { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 1px; background: var(--border); transition: background 0.15s; }
+  .sidebar-resizer:hover::before,
+  .app.resizing .sidebar-resizer::before { background: var(--accent); }
+  .sidebar-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--border); }
+  .sidebar-head h2 { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .upload-zone { display: block; width: 100%; border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 20px 12px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(124,111,255,0.05); }
+  .upload-zone input { display: none; }
+  .upload-icon { font-size: 22px; margin-bottom: 6px; }
+  .upload-zone p { font-size: 12px; color: var(--text2); }
+  .upload-zone p strong { color: var(--accent2); }
+  .upload-ext { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .file-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+  .file-tool-group { display: flex; align-items: center; gap: 6px; }
+  .file-tool-btn { font-size: 11px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .file-tool-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .file-tool-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .file-tool-btn.danger { border-color: rgba(255,95,95,0.25); color: var(--error); }
+  .file-tool-status { font-size: 11px; color: var(--text3); }
+  .file-tool-btn.primary { background: rgba(124,111,255,0.18); border-color: rgba(124,111,255,0.4); color: var(--accent2); padding: 8px 16px; font-size: 12px; font-weight: 600; }
+  .file-select-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px 0; color: var(--text2); font-size: 12px; }
+  .file-select-head input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  #selectAllBtn, #runAllBtnTop { display: none !important; }
+  #deleteSelectedBtn { margin-left: auto; }
+  .file-select-head .file-tool-status { margin-left: 6px; }
+
+  .file-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .file-list::-webkit-scrollbar { width: 4px; }
+  .file-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .file-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; transition: background 0.15s; margin-bottom: 2px; }
+  .file-item:hover { background: var(--bg3); }
+  .file-item:hover .file-del { opacity: 1; }
+  .file-item.active { background: rgba(124,111,255,0.12); }
+  .file-item.marked { outline: 1px solid rgba(124,111,255,0.35); background: rgba(124,111,255,0.08); }
+  .file-check { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .file-icon { font-size: 16px; flex-shrink: 0; }
+  .file-meta { flex: 1; min-width: 0; }
+  .file-main-hit { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+  .file-name { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-status { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .file-badge { flex-shrink: 0; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 99px; }
+  .badge-pending { background: var(--bg3); color: var(--text3); }
+  .badge-running { background: var(--info-bg); color: var(--info); }
+  .badge-done { background: var(--ok-bg); color: var(--ok); }
+  .badge-error-file { background: var(--error-bg); color: var(--error); }
+  .file-del { opacity: 0; flex-shrink: 0; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 4px; line-height: 1; transition: color 0.15s, opacity 0.15s; }
+  .file-del:hover { color: var(--error); }
+
+  .sidebar-foot { display: none; }
+  .run-btn { width: 100%; padding: 10px; border-radius: var(--radius); border: none; background: var(--accent); color: #fff; font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+  .run-btn:hover { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .run-all-btn { width: 100%; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text2); font-family: var(--font); font-size: 12px; cursor: pointer; margin-top: 6px; transition: border-color 0.2s, color 0.2s; }
+  .run-all-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .run-all-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* CONTENT */
+  .content { flex: 1; overflow-y: auto; }
+  .content::-webkit-scrollbar { width: 5px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text3); padding: 40px; text-align: center; }
+  .empty-state .big-icon { font-size: 48px; opacity: 0.4; }
+  .empty-state h3 { font-size: 16px; font-weight: 500; color: var(--text2); }
+  .empty-state p { font-size: 13px; max-width: 300px; }
+
+  .result-panel { padding: 24px 28px; max-width: 960px; }
+  .result-header { margin-bottom: 20px; }
+  .result-filename { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .result-meta { font-size: 12px; color: var(--text3); }
+  .result-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab-btn { padding: 8px 14px; font-size: 13px; font-family: var(--font); background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text2); cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tab-btn:hover:not(.active) { color: var(--text); }
+
+  .stats-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-num { font-size: 24px; font-weight: 600; }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .stat-error { color: var(--error); } .stat-warn { color: var(--warn); } .stat-ok { color: var(--ok); }
+
+  .prog-wrap { background: var(--bg3); border-radius: 4px; height: 4px; margin-bottom: 20px; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--ok); border-radius: 4px; transition: width 0.3s; }
+
+  .issue-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 10px; transition: border-color 0.15s; }
+  .issue-card:hover { border-color: var(--border2); }
+  .issue-card.resolved { opacity: 0.38; }
+  .issue-card.type-error { border-left: 3px solid var(--error); }
+  .issue-card.type-warning { border-left: 3px solid var(--warn); }
+  .issue-card.type-suggestion { border-left: 3px solid var(--ok); }
+  .issue-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  .type-badge { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; margin-top: 1px; }
+  .tb-error { background: var(--error-bg); color: var(--error); }
+  .tb-warning { background: var(--warn-bg); color: var(--warn); }
+  .tb-suggestion { background: var(--ok-bg); color: var(--ok); }
+  .slide-badge { font-size: 11px; color: var(--accent2); background: rgba(124,111,255,0.1); padding: 2px 8px; border-radius: 99px; margin-left: auto; flex-shrink: 0; cursor: pointer; border: 1px solid rgba(124,111,255,0.22); transition: background 0.15s; user-select: none; }
+  .slide-badge:hover { background: rgba(124,111,255,0.22); }
+  .issue-title { font-size: 13px; font-weight: 500; flex: 1; }
+  .issue-desc { font-size: 12px; color: var(--text2); margin-bottom: 10px; line-height: 1.6; }
+  .diff-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .diff-chip { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 5px; }
+  .dc-before { background: rgba(255,95,95,0.12); color: var(--error); }
+  .dc-after { background: rgba(61,214,140,0.12); color: var(--ok); }
+  .diff-arrow { color: var(--text3); font-size: 13px; }
+  .issue-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .act-btn { font-size: 12px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .act-btn:hover { background: var(--bg3); color: var(--text); }
+  .act-resolve { border-color: rgba(61,214,140,0.3); color: var(--ok); }
+  .act-resolve:hover { background: var(--ok-bg) !important; }
+  .act-resolved { background: var(--ok-bg); color: var(--ok); border-color: rgba(61,214,140,0.3); }
+
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-chip { font-size: 12px; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .filter-chip.active { background: rgba(124,111,255,0.15); color: var(--accent2); border-color: rgba(124,111,255,0.4); }
+  .search-box { flex: 1; min-width: 160px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); font-family: var(--font); font-size: 13px; padding: 5px 12px; border-radius: 99px; outline: none; }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text3); }
+
+  .raw-slide { margin-bottom: 16px; }
+  .raw-slide-title { font-size: 12px; font-weight: 500; color: var(--accent2); margin-bottom: 6px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .raw-slide-title:hover { opacity: 0.8; }
+  .raw-text { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--text2); white-space: pre-wrap; line-height: 1.7; }
+
+  .loading-wrap { padding: 40px; text-align: center; color: var(--text2); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-step { font-size: 13px; color: var(--text3); margin-top: 6px; }
+  .loading-actions { display: flex; justify-content: center; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .loading-btn { font-size: 12px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .loading-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .loading-btn.danger { border-color: rgba(255,95,95,0.25); color: var(--error); }
+
+  .note-area { background: var(--bg3); border: 1px solid var(--border2); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: 12px; padding: 6px 10px; resize: vertical; width: 100%; margin-top: 8px; }
+  .note-area::placeholder { color: var(--text3); }
+
+  .export-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .export-btn { font-size: 12px; padding: 7px 14px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .export-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .apply-btn { border-color: rgba(61,214,140,0.4) !important; color: var(--ok) !important; }
+  .apply-btn:hover { background: var(--ok-bg) !important; border-color: var(--ok) !important; }
+  .apply-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 16px; font-size: 13px; color: var(--text); z-index: 9999; animation: fadeIn 0.2s; max-width: 360px; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  .section-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 12px; }
+  .no-issues { background: var(--ok-bg); border: 1px solid rgba(61,214,140,0.2); border-radius: var(--radius); padding: 16px; text-align: center; color: var(--ok); font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .modal-box { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-lg); width: 100%; max-width: 780px; max-height: 90vh; display: flex; flex-direction: column; }
+  .modal-head { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 10px; }
+  .modal-title { font-size: 14px; font-weight: 500; flex: 1; }
+  .modal-close { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--bg3); }
+  .modal-body { flex: 1; overflow-y: auto; padding: 18px; }
+  .slide-canvas-wrap { display: none; background: #fff; border-radius: 8px; aspect-ratio: 16/9; position: relative; overflow: hidden; margin-bottom: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.18); }
+  .slide-stage { position: absolute; inset: 0; background: #fff; overflow: hidden; }
+  .slide-shape-text { position: absolute; white-space: pre-wrap; overflow: hidden; word-break: break-word; color: #222; line-height: 1.3; }
+  .slide-shape-image { position: absolute; object-fit: contain; }
+  .slide-shape-fallback { position: absolute; border: 1px dashed rgba(0,0,0,0.12); background: rgba(0,0,0,0.03); }
+  .slide-imgs-row { display: none; }
+  .slide-img-item img { max-height: 120px; border-radius: 4px; display: block; }
+  .slide-text-box { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-family: var(--mono); font-size: 14px; color: var(--text); white-space: pre-wrap; line-height: 1.8; max-height: 58vh; overflow-y: auto; }
+  .modal-hit-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .modal-hit-chip { font-size: 11px; line-height: 1.3; padding: 4px 8px; border-radius: 999px; background: rgba(255,95,95,0.12); border: 1px solid rgba(255,95,95,0.22); color: #ff9a9a; }
+  .issue-highlight { background: rgba(255,95,95,0.18); color: #ffd4d4; box-shadow: inset 0 -1px 0 rgba(255,95,95,0.35); border-radius: 4px; padding: 0 1px; }
+  .modal-nav { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px; }
+  .nav-btn { padding: 6px 16px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); font-size: 12px; transition: all 0.15s; }
+  .nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .modal-slide-num { font-size: 12px; color: var(--text3); min-width: 60px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <nav class="nav">
+    <div class="nav-logo" onclick="resetAppFromLogo()" title="클릭하면 화면을 새로 시작합니다">PPT <span>검수</span> 도구</div>
+    <div class="nav-sep"></div>
+    <div class="nav-controls">
+      <span class="api-key-label">모델</span>
+      <select class="model-select" id="modelSelect">
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4o-mini">GPT-4o mini</option>
+      </select>
+      <label class="mode-toggle">
+        <input type="checkbox" id="conservativeModeInput" />
+        <span>보수 모드</span>
+      </label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="api-key-label">Base URL</span>
+        <input class="base-url-input" type="text" id="baseUrlInput" placeholder="https://api.openai.com/v1" autocomplete="off" />
+        <button class="api-test-btn" type="button" id="testConnectionBtn" onclick="testApiConnection()">연결 테스트</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="api-key-label">OpenAI API Key</span>
+        <div class="key-status" id="keyStatus"></div>
+        <input class="api-key-input" type="password" id="apiKeyInput" placeholder="API Key" autocomplete="off" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>파일 목록</h2>
+        <label class="upload-zone" id="dropZone">
+          <input type="file" id="fileInput" multiple accept=".pptx" />
+          <div class="upload-icon">📁</div>
+          <p><strong>클릭</strong> 또는 드래그앤드롭</p>
+          <p class="upload-ext">.pptx 파일 지원 · 여러 파일 동시 선택</p>
+        </label>
+        <div class="file-tools">
+          <button class="file-tool-btn primary" id="runBtnTop" type="button" onclick="analyzeSelected()" disabled>선택 검수</button>
+          <button class="file-tool-btn primary" id="runAllBtnTop" type="button" onclick="analyzeAll()" disabled>전체 검수</button>
+          <button class="file-tool-btn" id="selectAllBtn" type="button" onclick="toggleSelectAllFiles()">전체 선택</button>
+          <button class="file-tool-btn danger" id="deleteSelectedBtn" type="button" onclick="deleteMarkedFiles()" disabled>선택 삭제</button>
+          <div class="file-tool-status" id="fileToolStatus">선택된 파일 없음</div>
+        </div>
+      </div>
+      <div class="file-list" id="fileList"></div>
+      <div class="sidebar-foot">
+        <button class="run-btn" id="runBtn" onclick="analyzeSelected()" disabled>선택 파일 검수 시작</button>
+        <button class="run-all-btn" id="runAllBtn" onclick="analyzeAll()" disabled>전체 파일 일괄 검수</button>
+      </div>
+    </aside>
+    <div class="sidebar-resizer" id="sidebarResizer" aria-label="사이드바 너비 조절" role="separator"></div>
+
+    <div class="content" id="content">
+      <div class="empty-state">
+        <div class="big-icon">📂</div>
+        <h3>PPT 파일을 업로드해 주세요.</h3>
+        <p>왼쪽에서 .pptx 파일을 추가하고 API 키를 입력한 뒤 검수를 시작해 주세요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE PREVIEW MODAL -->
+<div class="modal-overlay" id="slideModal" style="display:none" onclick="closeModalBg(event)">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-title" id="modalTitle">슬라이드 미리보기</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="slide-canvas-wrap" id="slideCanvasWrap"></div>
+      <div class="slide-imgs-row" id="slideImgsRow"></div>
+      <div class="slide-text-box" id="slideTextBox"></div>
+      <div class="modal-nav">
+        <button class="nav-btn" id="prevBtn" onclick="modalNav(-1)">이전</button>
+        <span class="modal-slide-num" id="modalSlideNum"></span>
+        <button class="nav-btn" id="nextBtn" onclick="modalNav(1)">다음</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const files = [];
+let selectedIdx = -1;
+let activeFilter = 'all';
+let searchQuery = '';
+let activeTab = 'issues';
+let isSearchComposing = false;
+let modalFileIdx = -1;
+let modalSlideIdx = 0;
+let nextFileId = 1;
+let markDragActive = false;
+let markDragValue = false;
+let lastMarkedIdx = -1;
+const analysisControl = {
+  active: false,
+  paused: false,
+  cancelled: false,
+  batchCancelled: false,
+  abortController: null
+};
+
+const apiKeyInput = document.getElementById('apiKeyInput');
+const keyStatus   = document.getElementById('keyStatus');
+const fileListEl  = document.getElementById('fileList');
+const runBtn      = document.getElementById('runBtn');
+const runAllBtn   = document.getElementById('runAllBtn');
+const runBtnTop   = document.getElementById('runBtnTop');
+const runAllBtnTop = document.getElementById('runAllBtnTop');
+const selectAllBtn = document.getElementById('selectAllBtn');
+const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+const fileToolStatus = document.getElementById('fileToolStatus');
+let selectAllCheckbox = document.getElementById('selectAllCheckbox');
+const contentEl   = document.getElementById('content');
+const dropZone    = document.getElementById('dropZone');
+const fileInput   = document.getElementById('fileInput');
+const baseUrlInput = document.getElementById('baseUrlInput');
+const testConnectionBtn = document.getElementById('testConnectionBtn');
+const modelSelect = document.getElementById('modelSelect');
+const conservativeModeInput = document.getElementById('conservativeModeInput');
+const appEl = document.querySelector('.app');
+const sidebarEl = document.querySelector('.sidebar');
+const sidebarResizer = document.getElementById('sidebarResizer');
+const ANALYSIS_SEED = 7;
+const ANALYSIS_SECOND_SEED = 17;
+const ANALYSIS_TEMPERATURE = 0;
+const SIDEBAR_MIN_WIDTH = 240;
+const SIDEBAR_MAX_WIDTH = 520;
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const ANALYSIS_SCHEMA = {
+  name: 'ppt_spellcheck_result',
+  strict: true,
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['issues'],
+    properties: {
+      issues: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id', 'slide', 'type', 'title', 'description', 'before', 'after'],
+          properties: {
+            id: { type: 'string' },
+            slide: { type: 'integer' },
+            type: { type: 'string', enum: ['error'] },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            before: { type: 'string' },
+            after: { type: 'string' }
+          }
+        }
+      }
+    }
+  }
+};
+const ANALYSIS_SYSTEM_PROMPT = [
+  '당신은 PPT 텍스트의 오탈자와 명확한 문법 오류만 찾는 1차 검수 도우미입니다.',
+  '입력으로 받은 슬라이드 텍스트만 근거로 판단하고, 추측하거나 과도하게 해석하지 마세요.',
+  'warning, suggestion, 스타일 제안은 하지 말고 확실한 오류만 error로 반환하세요.',
+  '날짜 형식 차이, 날짜 표기 통일, 날짜 포맷 불일치는 오류로 보지 말고 제외하세요.',
+  '동일한 문제는 한 번만 기록하세요.',
+  'title, description, before, after는 반드시 자연스러운 한국어로 작성하세요.',
+  '영어 문장을 설명할 때도 설명 문구는 반드시 한국어로 작성하세요.',
+  '문제가 없으면 issues를 빈 배열로 반환하세요.'
+].join(' ');
+
+// Restore saved settings
+const savedKey = localStorage.getItem('openai_api_key');
+if (savedKey) { apiKeyInput.value = savedKey; keyStatus.className = 'key-status ok'; }
+const savedBaseUrl = localStorage.getItem('openai_base_url');
+if (savedBaseUrl) baseUrlInput.value = savedBaseUrl;
+const savedModel = localStorage.getItem('openai_model');
+if (savedModel) modelSelect.value = savedModel;
+conservativeModeInput.checked = localStorage.getItem('spellcheck_conservative_mode') === '1';
+const savedSidebarWidth = Number(localStorage.getItem('sidebar_width'));
+if (savedSidebarWidth) {
+  sidebarEl.style.width = `${Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, savedSidebarWidth))}px`;
+}
+if (runBtnTop) runBtnTop.textContent = '\uAC80\uC218';
+if (deleteSelectedBtn) deleteSelectedBtn.textContent = '\uC0AD\uC81C';
+
+function setupFileSelectionHeader() {
+  if (selectAllCheckbox || !fileListEl?.parentElement) return;
+  const label = document.createElement('label');
+  label.className = 'file-select-head';
+  label.innerHTML = '<input type="checkbox" id="selectAllCheckbox" /><span>전체 선택</span>';
+  fileListEl.parentElement.insertBefore(label, fileListEl);
+  selectAllCheckbox = label.querySelector('#selectAllCheckbox');
+  selectAllCheckbox.addEventListener('change', toggleSelectAllFiles);
+  fileToolStatus.classList.add('file-tool-status');
+  label.appendChild(fileToolStatus);
+}
+
+setupFileSelectionHeader();
+
+apiKeyInput.addEventListener('input', () => {
+  const v = apiKeyInput.value.trim();
+  localStorage.setItem('openai_api_key', v);
+  keyStatus.className = 'key-status' + (v ? ' ok' : '');
+  updateBtns();
+});
+baseUrlInput.addEventListener('input', () => {
+  localStorage.setItem('openai_base_url', baseUrlInput.value.trim());
+});
+modelSelect.addEventListener('change', () => localStorage.setItem('openai_model', modelSelect.value));
+conservativeModeInput.addEventListener('change', () => {
+  localStorage.setItem('spellcheck_conservative_mode', conservativeModeInput.checked ? '1' : '0');
+});
+
+function getApiBaseUrl() {
+  const raw = (baseUrlInput?.value || '').trim();
+  return (raw || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '');
+}
+
+function getChatCompletionsUrl() {
+  const baseUrl = getApiBaseUrl();
+  if (/\/chat\/completions$/i.test(baseUrl)) return baseUrl;
+  return `${baseUrl}/chat/completions`;
+}
+
+function getFetchFailureMessage() {
+  return `연결 실패: ${getChatCompletionsUrl()} 에 접근하지 못했습니다. Base URL 형식, 사내 게이트웨이 CORS 허용 여부, 네트워크 연결을 확인해 주세요.`;
+}
+
+function getModelsUrl() {
+  const baseUrl = getApiBaseUrl();
+  if (/\/models$/i.test(baseUrl)) return baseUrl;
+  return `${baseUrl}/models`;
+}
+
+async function parseApiError(resp) {
+  let payload = null;
+  try {
+    payload = await resp.json();
+  } catch (_) {}
+  const upstream = payload?.error?.message || payload?.message || '';
+  if (resp.status === 401) return `인증 실패(401): API Key가 올바른지 확인해 주세요.${upstream ? ' ' + upstream : ''}`;
+  if (resp.status === 403) return `권한 없음(403): 사내 게이트웨이 접근 권한 또는 정책을 확인해 주세요.${upstream ? ' ' + upstream : ''}`;
+  if (resp.status === 404) return `경로 없음(404): Base URL 또는 엔드포인트 경로를 확인해 주세요. 현재 URL: ${resp.url || getChatCompletionsUrl()}`;
+  if (resp.status >= 500) return `서버 오류(${resp.status}): 게이트웨이 또는 업스트림 서버 상태를 확인해 주세요.${upstream ? ' ' + upstream : ''}`;
+  return upstream || `API 오류 (${resp.status})`;
+}
+
+async function testApiConnection() {
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) { toast('API Key를 입력해 주세요.'); return; }
+
+  try {
+    if (testConnectionBtn) testConnectionBtn.disabled = true;
+    const resp = await fetch(getModelsUrl(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+
+    if (!resp.ok) {
+      toast(await parseApiError(resp));
+      return;
+    }
+
+    toast(`연결 성공: ${getApiBaseUrl()}`);
+  } catch (error) {
+    if (error instanceof TypeError && /fetch/i.test(error.message || '')) {
+      toast(`연결 실패(CORS/네트워크): ${getModelsUrl()} 에 접근하지 못했습니다. 브라우저 CORS 허용 여부와 게이트웨이 노출 정책을 확인해 주세요.`);
+      return;
+    }
+    toast('연결 테스트 실패: ' + (error?.message || '알 수 없는 오류'));
+  } finally {
+    if (testConnectionBtn) testConnectionBtn.disabled = false;
+  }
+}
+
+function clampSidebarWidth(width) {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, width));
+}
+
+function setSidebarWidth(width) {
+  const nextWidth = clampSidebarWidth(width);
+  sidebarEl.style.width = `${nextWidth}px`;
+  localStorage.setItem('sidebar_width', String(nextWidth));
+}
+
+function startSidebarResize(event) {
+  event.preventDefault();
+  appEl.classList.add('resizing');
+
+  const onMove = moveEvent => {
+    setSidebarWidth(moveEvent.clientX);
+  };
+
+  const onUp = () => {
+    appEl.classList.remove('resizing');
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+  };
+
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
+
+sidebarResizer.addEventListener('pointerdown', startSidebarResize);
+fileInput.addEventListener('change', e => addFiles(e.target.files));
+const showSidebarDropState = e => {
+  e.preventDefault();
+  dropZone.classList.add('drag');
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+};
+const clearSidebarDropState = e => {
+  if (e && sidebarEl.contains(e.relatedTarget)) return;
+  dropZone.classList.remove('drag');
+};
+const handleSidebarDrop = e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+};
+dropZone.addEventListener('dragenter', showSidebarDropState);
+dropZone.addEventListener('dragover', showSidebarDropState);
+dropZone.addEventListener('dragleave', clearSidebarDropState);
+dropZone.addEventListener('drop', handleSidebarDrop);
+sidebarEl.addEventListener('dragenter', showSidebarDropState);
+sidebarEl.addEventListener('dragover', showSidebarDropState);
+sidebarEl.addEventListener('dragleave', clearSidebarDropState);
+sidebarEl.addEventListener('drop', handleSidebarDrop);
+
+/* ?? FILES ?? */
+function addFiles(list) {
+  for (const f of list) {
+    if (!f.name.toLowerCase().endsWith('.pptx')) continue;
+    if (files.find(x => x.name === f.name && x.size === f.size)) continue;
+    files.push({ id: nextFileId++, name: f.name, size: f.size, file: f, status: 'pending', marked: false, issues: null, slides: null, slideImages: null, slideVisuals: null, slideSize: null, error: null, resolvedSet: new Set(), notes: {} });
+  }
+  renderFileList(); updateBtns();
+}
+
+function deleteFile(idx, e) {
+  e.stopPropagation();
+  if (files[idx].status === 'running') { toast('분석 중인 파일은 삭제할 수 없습니다.'); return; }
+  files.splice(idx, 1);
+  if (selectedIdx === idx) { selectedIdx = -1; renderContent(); }
+  else if (selectedIdx > idx) selectedIdx--;
+  renderFileList(); updateBtns();
+}
+
+function markedFiles() {
+  return files.filter(f => f.marked);
+}
+
+function updateFileTools() {
+  const marked = markedFiles();
+  const removable = marked.filter(f => f.status !== 'running').length;
+  const blocked = marked.length - removable;
+  deleteSelectedBtn.disabled = removable === 0;
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = files.length > 0 && marked.length === files.length;
+    selectAllCheckbox.indeterminate = marked.length > 0 && marked.length < files.length;
+  }
+  if (marked.length === 0) fileToolStatus.textContent = '선택된 파일 없음';
+  else if (blocked > 0) fileToolStatus.textContent = marked.length + '개 선택됨 · ' + blocked + '개는 분석 중';
+  else fileToolStatus.textContent = marked.length + '개 선택됨';
+}
+
+function setFileMarked(idx, value) {
+  if (!files[idx]) return;
+  files[idx].marked = value;
+}
+
+function toggleFileMark(idx, e) {
+  e.stopPropagation();
+  const nextValue = !files[idx].marked;
+  if (e.shiftKey && lastMarkedIdx >= 0 && lastMarkedIdx !== idx) {
+    const [start, end] = [lastMarkedIdx, idx].sort((a, b) => a - b);
+    for (let i = start; i <= end; i += 1) setFileMarked(i, nextValue);
+  } else {
+    setFileMarked(idx, nextValue);
+  }
+  lastMarkedIdx = idx;
+  renderFileList();
+  updateBtns();
+}
+
+function startMarkDrag(idx, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const nextValue = !files[idx].marked;
+  if (e.shiftKey && lastMarkedIdx >= 0 && lastMarkedIdx !== idx) {
+    const [start, end] = [lastMarkedIdx, idx].sort((a, b) => a - b);
+    for (let i = start; i <= end; i += 1) setFileMarked(i, nextValue);
+  } else {
+    setFileMarked(idx, nextValue);
+  }
+  markDragActive = true;
+  markDragValue = nextValue;
+  lastMarkedIdx = idx;
+  renderFileList();
+  updateBtns();
+}
+
+function handleFileItemEnter(idx, e) {
+  if (!markDragActive) return;
+  if (!(e?.buttons & 1)) {
+    stopMarkDrag();
+    return;
+  }
+  setFileMarked(idx, markDragValue);
+  renderFileList();
+  updateBtns();
+}
+
+function stopMarkDrag() {
+  markDragActive = false;
+}
+
+function toggleSelectAllFiles() {
+  const shouldMarkAll = selectAllCheckbox ? selectAllCheckbox.checked : markedFiles().length !== files.length;
+  files.forEach(f => { f.marked = shouldMarkAll; });
+  renderFileList();
+  updateBtns();
+}
+
+function deleteMarkedFiles() {
+  const marked = markedFiles();
+  if (marked.length === 0) return;
+
+  const removableIds = new Set(marked.filter(f => f.status !== 'running').map(f => f.id));
+  const blockedCount = marked.length - removableIds.size;
+  if (removableIds.size === 0) {
+    toast('분석 중인 파일은 삭제할 수 없습니다.');
+    return;
+  }
+
+  const selectedFile = files[selectedIdx];
+  const nextFiles = files.filter(f => !removableIds.has(f.id));
+  files.length = 0;
+  files.push(...nextFiles);
+
+  if (!selectedFile || removableIds.has(selectedFile.id)) {
+    selectedIdx = files.length > 0 ? 0 : -1;
+    renderContent();
+  } else {
+    selectedIdx = files.findIndex(f => f.id === selectedFile.id);
+  }
+
+  renderFileList();
+  updateBtns();
+  toast(blockedCount > 0 ? (removableIds.size + '개 삭제, ' + blockedCount + '개는 분석 중이라 유지했습니다.') : (removableIds.size + '개 삭제했습니다.'));
+}
+
+function updateBtns() {
+  const hasKey = Boolean(apiKeyInput.value.trim());
+  const hasMarkedRunnable = markedFiles().some(f => f.status === 'pending' || f.status === 'error');
+  runBtn.disabled    = analysisControl.active || (!hasMarkedRunnable && selectedIdx < 0) || !hasKey;
+  runAllBtn.disabled = analysisControl.active || files.length === 0 || !hasKey;
+  if (runBtnTop) runBtnTop.disabled = runBtn.disabled;
+  if (runAllBtnTop) runAllBtnTop.disabled = runAllBtn.disabled;
+  updateFileTools();
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+}
+
+function selectFile(i) {
+  selectedIdx = i; activeFilter = 'all'; searchQuery = ''; activeTab = 'issues';
+  renderFileList(); updateBtns(); renderContent();
+}
+
+function handleFileMainClick(idx, e) {
+  e.stopPropagation();
+  if (files[idx]?.status === 'pending') {
+    toggleFileMark(idx, e);
+    return;
+  }
+  selectFile(idx);
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = '';
+}
+
+/* ?? RENDER ?? */
+function renderContent() {
+  if (selectedIdx < 0) {
+    contentEl.innerHTML = '<div class="empty-state"><h3>파일을 선택해 주세요.</h3></div>';
+    return;
+  }
+  const f = files[selectedIdx];
+  if (f.status === 'pending') renderPending(f);
+  else if (f.status === 'running') renderLoading(f);
+  else if (f.status === 'done') renderResult(f);
+  else renderError(f);
+}
+
+function renderPending(f) {
+  contentEl.innerHTML = `<div class="result-panel"><div class="result-header"><div class="result-filename">${esc(f.name)}</div><div class="result-meta">${(f.size/1024).toFixed(0)} KB</div></div><div class="empty-state" style="height:300px;"><h3>검수 준비 완료</h3><p>상단의 검수 버튼으로 시작할 수 있습니다.</p></div></div>`;
+}
+
+function renderLoading(f) {
+  contentEl.innerHTML = `<div class="result-panel"><div class="result-header"><div class="result-filename">${esc(f.name)}</div><div class="result-meta">AI 분석 중...</div></div><div class="loading-wrap"><div class="spinner"></div><div>슬라이드 텍스트 추출 및 AI 검수 진행 중</div><div class="loading-step" id="loadingStep">PPTX 파싱 중...</div></div></div>`;
+}
+
+function renderError(f) {
+  contentEl.innerHTML = `<div class="result-panel"><div class="result-header"><div class="result-filename">${esc(f.name)}</div></div><div style="background:var(--error-bg);border:1px solid rgba(255,95,95,0.2);border-radius:var(--radius);padding:16px;color:var(--error);font-size:13px;">${esc(f.error || '알 수 없는 오류가 발생했습니다.')}</div></div>`;
+}
+function renderResult(f) {
+  const safeIssues = (f.issues || []).filter(Boolean);
+  const total = safeIssues.length;
+  const errors = safeIssues.filter(x => x.type==='error').length;
+  const resolved = safeIssues.filter(x => f.resolvedSet.has(x.id)).length;
+  const pct = total > 0 ? Math.round(resolved/total*100) : 100;
+  const resolvedWithFix = safeIssues.filter(x => f.resolvedSet.has(x.id) && x.before && x.after).length;
+  const effectiveSearchQuery = searchQuery.trim().length >= 1 ? searchQuery.trim().toLowerCase() : '';
+
+  const filtered = safeIssues.filter(iss => {
+    const localizedTitle = chooseKoreanTitle(iss.title, iss.before, iss.after);
+    const localizedDescription = chooseKoreanDescription(iss.description, iss.slide || 1, iss.before, iss.after, localizedTitle);
+    if (isDateFormattingIssue(iss.title, iss.description, iss.before, iss.after)) return false;
+    if (activeFilter === 'resolved' && !f.resolvedSet.has(iss.id)) return false;
+    if (activeFilter === 'error') {
+      if (f.resolvedSet.has(iss.id)) return false;
+      if (iss.type !== 'error') return false;
+    }
+    if (effectiveSearchQuery) {
+      return localizedTitle.toLowerCase().includes(effectiveSearchQuery)
+        || localizedDescription.toLowerCase().includes(effectiveSearchQuery)
+        || String(iss.before || '').toLowerCase().includes(effectiveSearchQuery)
+        || String(iss.after || '').toLowerCase().includes(effectiveSearchQuery)
+        || String(iss.slide).includes(effectiveSearchQuery);
+    }
+    return true;
+  });
+
+  const issueCards = filtered.length === 0
+    ? (total === 0 ? `<div class="no-issues">오류가 발견되지 않았습니다.</div>` : `<div class="no-issues">필터 조건에 맞는 항목이 없습니다.</div>`)
+    : filtered.map(iss => {
+      const localizedTitle = chooseKoreanTitle(iss.title, iss.before, iss.after);
+      const localizedDescription = chooseKoreanDescription(iss.description, iss.slide || 1, iss.before, iss.after, localizedTitle);
+      const isResolved = f.resolvedSet.has(iss.id);
+      const typeClass = {error:'type-error'}[iss.type]||'';
+      const tbClass   = {error:'tb-error'}[iss.type]||'';
+      const tbLabel   = {error:'오류'}[iss.type]||iss.type;
+      const diffHtml  = iss.before && iss.after
+        ? `<div class="diff-row"><span class="diff-chip dc-before">${esc(iss.before)}</span><span class="diff-arrow">→</span><span class="diff-chip dc-after">${esc(iss.after)}</span></div>`
+        : '';
+      return `<div class="issue-card ${typeClass}${isResolved?' resolved':''}" id="ic-${iss.id}">
+        <div class="issue-top">
+          <span class="type-badge ${tbClass}">${tbLabel}</span>
+          <span class="issue-title">${esc(localizedTitle)}</span>
+          <span class="slide-badge" onclick="openModal(${selectedIdx},${(iss.slide||1)-1})" title="슬라이드 미리보기 열기">슬라이드 ${iss.slide||'?'}</span>
+        </div>
+        <div class="issue-desc">${esc(localizedDescription)}</div>
+        ${diffHtml}
+        <div class="issue-actions">
+          <button class="act-btn ${isResolved?'act-resolved':'act-resolve'}" onclick="toggleResolve(${selectedIdx},'${iss.id}')">${isResolved?'처리 완료':'처리 완료로 표시'}</button>
+        </div>
+        <textarea class="note-area" rows="2" placeholder="메모 입력..." oninput="saveNote(${selectedIdx},'${iss.id}',this.value)">${esc(f.notes[iss.id]||'')}</textarea>
+      </div>`;
+    }).join('');
+
+  const rawHtml = (f.slides||[]).map((s,i) =>
+    `<div class="raw-slide">
+      <div class="raw-slide-title" onclick="openModal(${selectedIdx},${i})">Slide ${i+1} <span style="font-size:10px;color:var(--text3);">미리보기</span></div>
+      <div class="raw-text">${esc(s)}</div>
+    </div>`
+  ).join('');
+
+  const tabContent = activeTab === 'issues'
+    ? `<div class="export-bar">
+       <button class="export-btn" onclick="exportCSV(${selectedIdx})">CSV 내보내기</button>
+       <button class="export-btn apply-btn" onclick="applyAndDownload(${selectedIdx})" ${resolvedWithFix===0?'disabled':''}>수정 반영 후 다운로드 (${resolvedWithFix}건)</button>
+       </div>
+       <div class="filter-bar">
+         ${['all','error','resolved'].map(f2=>{
+           const lbs={all:'전체',error:'오류',resolved:'처리 완료'};
+           return `<button class="filter-chip${activeFilter===f2?' active':''}" onclick="setFilter('${f2}')">${lbs[f2]}</button>`;
+         }).join('')}
+         <input class="search-box" type="text" placeholder="키워드 또는 슬라이드 번호..." value="${esc(searchQuery)}" oninput="handleSearchInput(event)" oncompositionstart="startSearchComposition()" oncompositionend="endSearchComposition(event)" />
+       </div>
+       <div class="section-title">${filtered.length}개 항목</div>
+       ${issueCards}`
+    : `<div class="section-title">원본 텍스트</div>${rawHtml}`;
+
+  contentEl.innerHTML = `<div class="result-panel">
+    <div class="result-header">
+      <div class="result-filename">${esc(f.name)}</div>
+      <div class="result-meta">${f.slides?f.slides.length+'슬라이드':''} · ${new Date().toLocaleString('ko-KR')} · ${modelSelect.value} · ${conservativeModeInput.checked ? '보수 모드' : '일반 모드'}</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">전체 항목</div></div>
+      <div class="stat-card"><div class="stat-num stat-error">${errors}</div><div class="stat-label">오류</div></div>
+      <div class="stat-card"><div class="stat-num stat-ok">${resolved} / ${total}</div><div class="stat-label">처리 완료</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="result-tabs">
+      <button class="tab-btn${activeTab==='issues'?' active':''}" onclick="setTab('issues')">검수 결과 (${total})</button>
+      <button class="tab-btn${activeTab==='raw'?' active':''}" onclick="setTab('raw')">원본 텍스트</button>
+    </div>
+    ${tabContent}
+  </div>`;
+  const statCards = contentEl.querySelectorAll('.stats-row .stat-card');
+  if (statCards.length > 2) statCards[0].remove();
+  const warningStatCard = contentEl.querySelector('.stat-num.stat-warn')?.closest('.stat-card');
+  if (warningStatCard) warningStatCard.remove();
+}
+
+/* ?? SLIDE PREVIEW MODAL ?? */
+function openModal(fileIdx, slideIdx) {
+  const f = files[fileIdx];
+  if (!f || !f.slides) return;
+  modalFileIdx  = fileIdx;
+  modalSlideIdx = Math.max(0, Math.min(slideIdx, f.slides.length - 1));
+  renderModal();
+  document.getElementById('slideModal').style.display = 'flex';
+}
+
+function renderModal() {
+  const f = files[modalFileIdx];
+  if (!f) return;
+  const total = f.slides.length;
+  const idx   = modalSlideIdx;
+
+  document.getElementById('modalTitle').textContent   = `슬라이드 미리보기 · ${f.name}`;
+  document.getElementById('modalSlideNum').textContent = `${idx+1} / ${total}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === total - 1;
+
+  // Text
+  document.getElementById('slideTextBox').textContent = f.slides[idx] || '(텍스트 없음)';
+
+  // Canvas text render
+  const canvasWrap = document.getElementById('slideCanvasWrap');
+  canvasWrap.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 960; canvas.height = 540;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f5f5fa';
+  ctx.fillRect(0,0,960,540);
+  const lines = (f.slides[idx]||'').split('\n').filter(l=>l.trim());
+  if (lines.length > 0) {
+    // Title
+    ctx.fillStyle = '#1a1a2e';
+    const titleSz = Math.min(38, Math.max(16, Math.floor(800/(lines[0].length+2))));
+    ctx.font = `600 ${titleSz}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(lines[0], 480, 60, 880);
+    // Body
+    ctx.font = '17px sans-serif';
+    ctx.fillStyle = '#333';
+    lines.slice(1, 15).forEach((line, i) => {
+      ctx.fillText(line, 480, 130 + i * 28, 880);
+    });
+  } else {
+    ctx.fillStyle = '#aaa';
+    ctx.font = '20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('(?댁슜 ?놁쓬)', 480, 270);
+  }
+  canvas.style.cssText = 'width:100%;height:100%;display:block;';
+  canvasWrap.appendChild(canvas);
+
+  // Embedded images
+  const imgsRow = document.getElementById('slideImgsRow');
+  imgsRow.innerHTML = '';
+  if (f.slideImages && f.slideImages[idx] && f.slideImages[idx].length > 0) {
+    f.slideImages[idx].forEach(src => {
+      const d = document.createElement('div');
+      d.className = 'slide-img-item';
+      const img = document.createElement('img');
+      img.src = src;
+      d.appendChild(img);
+      imgsRow.appendChild(d);
+    });
+  }
+}
+
+function modalNav(delta) {
+  if (modalFileIdx < 0) return;
+  const f = files[modalFileIdx];
+  modalSlideIdx = Math.max(0, Math.min(modalSlideIdx + delta, f.slides.length - 1));
+  renderModal();
+}
+
+function closeModal()      { document.getElementById('slideModal').style.display = 'none'; }
+function closeModalBg(e)   { if (e.target === document.getElementById('slideModal')) closeModal(); }
+
+/* ?? EXTRACT PPTX ?? */
+async function extractPptxText(file) {
+  const zip = await JSZip.loadAsync(file);
+  const slideFiles = Object.keys(zip.files)
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a,b) => parseInt(a.match(/\d+/)[0]) - parseInt(b.match(/\d+/)[0]));
+
+  const slides = [], slideImages = [];
+  const parser = new DOMParser();
+
+  for (const sf of slideFiles) {
+    const xml = await zip.files[sf].async('string');
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const paras = doc.querySelectorAll('p');
+    const texts = [];
+    paras.forEach(p => {
+      const t = Array.from(p.querySelectorAll('t')).map(x=>x.textContent).join('');
+      if (t.trim()) texts.push(t.trim());
+    });
+    slides.push(texts.join('\n'));
+
+    // Extract images via relationships
+    const num      = sf.match(/slide(\d+)/)[1];
+    const relsPath = `ppt/slides/_rels/slide${num}.xml.rels`;
+    const imgs     = [];
+    if (zip.files[relsPath]) {
+      const rXml = await zip.files[relsPath].async('string');
+      const rDoc = parser.parseFromString(rXml, 'text/xml');
+      for (const rel of rDoc.querySelectorAll('Relationship')) {
+        const type   = rel.getAttribute('Type') || '';
+        const target = rel.getAttribute('Target') || '';
+        if (!type.includes('image')) continue;
+        const imgPath = target.startsWith('../') ? 'ppt/' + target.slice(3) : 'ppt/slides/' + target;
+        const key     = Object.keys(zip.files).find(k => k.toLowerCase() === imgPath.toLowerCase());
+        if (!key || /\.(emf|wmf)$/i.test(key)) continue;
+        try {
+          const blob = await zip.files[key].async('blob');
+          imgs.push(URL.createObjectURL(blob));
+        } catch(_) {}
+      }
+    }
+    slideImages.push(imgs);
+  }
+  return { slides, slideImages };
+}
+
+function xmlNodeName(node) {
+  return (node?.localName || node?.nodeName || '').split(':').pop();
+}
+
+function xmlAttr(node, ...names) {
+  for (const name of names) {
+    const value = node?.getAttribute?.(name);
+    if (value != null) return value;
+  }
+  return '';
+}
+
+function resolveZipPath(baseDir, target) {
+  const parts = `${baseDir}/${target}`.split('/');
+  const resolved = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') resolved.pop();
+    else resolved.push(part);
+  }
+  return resolved.join('/');
+}
+
+function emuToPercent(value, total) {
+  const num = Number(value || 0);
+  const max = Number(total || 1);
+  return max ? (num / max) * 100 : 0;
+}
+
+function parseSlideTextParagraphs(container) {
+  const paragraphs = Array.from(container?.querySelectorAll('p') || []);
+  return paragraphs
+    .map(p => Array.from(p.querySelectorAll('t')).map(x => x.textContent || '').join(''))
+    .map(text => text.trim())
+    .filter(Boolean);
+}
+
+function mapPptAlign(value) {
+  return ({ ctr: 'center', r: 'right', just: 'justify' }[value] || 'left');
+}
+
+function parseShapeText(sp, slideSize) {
+  const txBody = sp.querySelector('txBody');
+  if (!txBody) return null;
+
+  const xfrm = sp.querySelector('xfrm');
+  const off = xfrm?.querySelector('off');
+  const ext = xfrm?.querySelector('ext');
+  if (!off || !ext) return null;
+
+  const paragraphs = parseSlideTextParagraphs(txBody);
+  if (paragraphs.length === 0) return null;
+
+  const firstPara = txBody.querySelector('p');
+  const firstRunProps = firstPara?.querySelector('rPr') || txBody.querySelector('rPr') || firstPara?.querySelector('endParaRPr');
+  const placeholder = sp.querySelector('ph');
+  const placeholderType = xmlAttr(placeholder, 'type');
+  const isTitle = ['title', 'ctrTitle', 'subTitle'].includes(placeholderType);
+  const fontSize = Number(xmlAttr(firstRunProps, 'sz')) ? Number(xmlAttr(firstRunProps, 'sz')) / 75 : (isTitle ? 30 : 18);
+  const colorNode = firstRunProps?.querySelector('srgbClr');
+  const alignNode = firstPara?.querySelector('pPr');
+
+  return {
+    kind: 'text',
+    left: emuToPercent(xmlAttr(off, 'x'), slideSize.width),
+    top: emuToPercent(xmlAttr(off, 'y'), slideSize.height),
+    width: emuToPercent(xmlAttr(ext, 'cx'), slideSize.width),
+    height: emuToPercent(xmlAttr(ext, 'cy'), slideSize.height),
+    rotate: Number(xmlAttr(xfrm, 'rot')) / 60000 || 0,
+    text: paragraphs.join('\n'),
+    fontSize,
+    bold: xmlAttr(firstRunProps, 'b') === '1' || isTitle,
+    italic: xmlAttr(firstRunProps, 'i') === '1',
+    align: mapPptAlign(xmlAttr(alignNode, 'algn')),
+    color: colorNode ? `#${xmlAttr(colorNode, 'val')}` : '#222'
+  };
+}
+
+function parseShapeImage(pic, relMap, slideSize) {
+  const xfrm = pic.querySelector('xfrm');
+  const off = xfrm?.querySelector('off');
+  const ext = xfrm?.querySelector('ext');
+  if (!off || !ext) return null;
+
+  const blip = pic.querySelector('blip');
+  const relId = xmlAttr(blip, 'r:embed', 'embed');
+  const src = relMap.get(relId);
+  if (!src) return null;
+
+  return {
+    kind: 'image',
+    left: emuToPercent(xmlAttr(off, 'x'), slideSize.width),
+    top: emuToPercent(xmlAttr(off, 'y'), slideSize.height),
+    width: emuToPercent(xmlAttr(ext, 'cx'), slideSize.width),
+    height: emuToPercent(xmlAttr(ext, 'cy'), slideSize.height),
+    src
+  };
+}
+
+function parseSlideVisual(doc, relMap, slideSize) {
+  const spTree = doc.querySelector('spTree');
+  const elements = [];
+
+  for (const child of Array.from(spTree?.children || [])) {
+    const name = xmlNodeName(child);
+    if (name === 'sp') {
+      const textShape = parseShapeText(child, slideSize);
+      if (textShape) elements.push(textShape);
+    } else if (name === 'pic') {
+      const imageShape = parseShapeImage(child, relMap, slideSize);
+      if (imageShape) elements.push(imageShape);
+    }
+  }
+
+  return { background: '#ffffff', elements };
+}
+
+function renderModal() {
+  const f = files[modalFileIdx];
+  if (!f) return;
+  const total = f.slides.length;
+  const idx = modalSlideIdx;
+
+  document.getElementById('modalTitle').textContent = `슬라이드 미리보기 · ${f.name}`;
+  document.getElementById('modalSlideNum').textContent = `${idx + 1} / ${total}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === total - 1;
+  document.getElementById('slideTextBox').textContent = f.slides[idx] || '(텍스트 없음)';
+
+  const canvasWrap = document.getElementById('slideCanvasWrap');
+  canvasWrap.innerHTML = '';
+
+  const stage = document.createElement('div');
+  stage.className = 'slide-stage';
+  const slideSize = f.slideSize || { width: 960, height: 540 };
+  const visuals = (f.slideVisuals && f.slideVisuals[idx]) || { background: '#ffffff', elements: [] };
+  stage.style.background = visuals.background || '#ffffff';
+
+  visuals.elements.forEach(el => {
+    if (el.kind === 'image') {
+      const img = document.createElement('img');
+      img.className = 'slide-shape-image';
+      img.src = el.src;
+      img.style.left = `${el.left}%`;
+      img.style.top = `${el.top}%`;
+      img.style.width = `${el.width}%`;
+      img.style.height = `${el.height}%`;
+      stage.appendChild(img);
+      return;
+    }
+
+    const box = document.createElement('div');
+    box.className = 'slide-shape-text';
+    box.textContent = el.text || '';
+    box.style.left = `${el.left}%`;
+    box.style.top = `${el.top}%`;
+    box.style.width = `${el.width}%`;
+    box.style.height = `${el.height}%`;
+    box.style.fontSize = `${el.fontSize || 18}px`;
+    box.style.fontWeight = el.bold ? '700' : '400';
+    box.style.fontStyle = el.italic ? 'italic' : 'normal';
+    box.style.textAlign = el.align || 'left';
+    box.style.color = el.color || '#222';
+    if (el.rotate) box.style.transform = `rotate(${el.rotate}deg)`;
+    stage.appendChild(box);
+  });
+
+  canvasWrap.style.aspectRatio = `${slideSize.width} / ${slideSize.height}`;
+  canvasWrap.appendChild(stage);
+  document.getElementById('slideImgsRow').innerHTML = '';
+}
+
+function renderModal() {
+  const f = files[modalFileIdx];
+  if (!f) return;
+  const total = f.slides.length;
+  const idx = modalSlideIdx;
+  const slideText = f.slides[idx] || '(텍스트 없음)';
+  const slideIssues = (f.issues || []).filter(Boolean).filter(iss => (iss.slide || 1) === idx + 1 && !isDateFormattingIssue(iss.title, iss.description, iss.before, iss.after));
+  const highlightTerms = slideIssues.map(iss => iss.before).filter(Boolean);
+  const slideTextBox = document.getElementById('slideTextBox');
+
+  document.getElementById('modalTitle').textContent = `슬라이드 텍스트 미리보기 · ${f.name}`;
+  document.getElementById('modalSlideNum').textContent = `${idx + 1} / ${total}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === total - 1;
+  slideTextBox.innerHTML = `${slideIssues.length > 0 ? `<div class="modal-hit-list">${slideIssues.map(iss => `<span class="modal-hit-chip">${esc(chooseKoreanTitle(iss.title, iss.before, iss.after))}</span>`).join('')}</div>` : ''}${buildHighlightedTextHtml(slideText, highlightTerms)}`;
+
+  const canvasWrap = document.getElementById('slideCanvasWrap');
+  canvasWrap.style.display = 'none';
+  canvasWrap.innerHTML = '';
+  document.getElementById('slideImgsRow').innerHTML = '';
+}
+
+async function extractPptxText(file) {
+  const zip = await JSZip.loadAsync(file);
+  const parser = new DOMParser();
+  const presentationXml = await zip.files['ppt/presentation.xml']?.async('string');
+  const presentationDoc = presentationXml ? parser.parseFromString(presentationXml, 'text/xml') : null;
+  const slideSizeNode = presentationDoc?.querySelector('sldSz');
+  const slideSize = {
+    width: Number(xmlAttr(slideSizeNode, 'cx')) || 9144000,
+    height: Number(xmlAttr(slideSizeNode, 'cy')) || 5143500
+  };
+
+  const slideFiles = Object.keys(zip.files)
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/i.test(n))
+    .sort((a, b) => parseInt(a.match(/\d+/)[0], 10) - parseInt(b.match(/\d+/)[0], 10));
+
+  const slides = [];
+  const slideImages = [];
+  const slideVisuals = [];
+
+  for (const sf of slideFiles) {
+    const xml = await zip.files[sf].async('string');
+    const doc = parser.parseFromString(xml, 'text/xml');
+    const texts = parseSlideTextParagraphs(doc);
+    slides.push(texts.join('\n'));
+
+    const relsPath = sf.replace('ppt/slides/', 'ppt/slides/_rels/') + '.rels';
+    const relMap = new Map();
+    const imgs = [];
+    if (zip.files[relsPath]) {
+      const relDoc = parser.parseFromString(await zip.files[relsPath].async('string'), 'text/xml');
+      for (const rel of Array.from(relDoc.querySelectorAll('Relationship'))) {
+        const relId = xmlAttr(rel, 'Id');
+        const target = xmlAttr(rel, 'Target');
+        const type = xmlAttr(rel, 'Type');
+        if (!relId || !target || !type.includes('image')) continue;
+        const zipPath = resolveZipPath('ppt/slides', target);
+        const key = Object.keys(zip.files).find(k => k.toLowerCase() === zipPath.toLowerCase());
+        if (!key || /\.(emf|wmf)$/i.test(key)) continue;
+        try {
+          const blob = await zip.files[key].async('blob');
+          const src = URL.createObjectURL(blob);
+          relMap.set(relId, src);
+          imgs.push(src);
+        } catch (_) {}
+      }
+    }
+
+    slideImages.push(imgs);
+    slideVisuals.push(parseSlideVisual(doc, relMap, slideSize));
+  }
+
+  return { slides, slideImages, slideVisuals, slideSize };
+}
+
+/* ?? AI ANALYZE ?? */
+async function analyzeWithAI(slides, apiKey) {
+  const model = modelSelect.value;
+  const slideText = slides.map((s,i) => `[Slide ${i+1}]\n${s}`).join('\n\n---\n\n');
+  const prompt = `당신은 PPT 텍스트의 오탈자와 문법 오류를 찾는 검수 도우미입니다.
+
+아래 슬라이드 텍스트를 읽고 확실한 오류만 JSON으로 반환해 주세요.
+- title, description, before, after는 모두 한국어로 작성
+- 날짜 형식 차이, 스타일 제안, 애매한 표현은 제외
+- 문제가 없으면 issues는 빈 배열
+
+반환 형식:
+{
+  "issues": [
+    {
+      "id": "고유ID",
+      "slide": 1,
+      "type": "error",
+      "title": "오류 제목",
+      "description": "오류 설명",
+      "before": "원문",
+      "after": "수정안"
+    }
+  ]
+}
+
+슬라이드 텍스트:
+${slideText}`;
+
+  const resp = await fetch(getChatCompletionsUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, max_tokens: 4000, messages: [{ role:'user', content: prompt }], response_format: { type:'json_object' } })
+  });
+
+  if (!resp.ok) { const err = await resp.json(); throw new Error(err.error?.message || `API 오류 (${resp.status})`); }
+  const data = await resp.json();
+  const text = data.choices[0]?.message?.content || '';
+  return JSON.parse(text.replace(/```json\s*/g,'').replace(/```/g,'').trim()).issues || [];
+}
+
+/* ?? ANALYZE ?? */
+function setLoadingStep(message) {
+  const step = document.getElementById('loadingStep');
+  if (step) step.textContent = message;
+}
+
+function buildStableSlidePrompt(slideText, slideNumber) {
+  return [
+    `슬라이드 번호: ${slideNumber}`,
+    '아래 텍스트만 보고 확실한 오탈자와 문법 오류만 추출해 주세요.',
+    '판단 기준:',
+    '- 명확한 철자 오류, 문법 오류, 조사/띄어쓰기 문제만 error',
+    '- 날짜 형식 차이, 날짜 표기 통일, 날짜 포맷 불일치는 제외',
+    '- 제안, 스타일 피드백, 애매한 표현은 제외',
+    '- 같은 문제는 한 번만 기록',
+    '- before/after는 원문 기준으로 짧게 작성',
+    '- title과 description은 반드시 한국어로 작성',
+    '- 확신이 낮으면 제외',
+    '',
+    '슬라이드 텍스트:',
+    slideText && slideText.trim() ? slideText : '(텍스트 없음)'
+  ].join('\n');
+}
+
+function compactText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function hasHangul(text) {
+  return /[가-힣]/.test(String(text || ''));
+}
+
+function hasLongEnglish(text) {
+  return /[A-Za-z]{3,}/.test(String(text || ''));
+}
+
+function looksLikeDateText(text) {
+  const value = String(text || '');
+  return /\b\d{1,4}[./-]\d{1,2}([./-]\d{1,4})?\b/.test(value)
+    || /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(value)
+    || /[0-9]+\s*(day|month|year|am|pm)\b/i.test(value);
+}
+
+function isDateFormattingIssue(title, description, before, after) {
+  const combined = [title, description, before, after].map(compactText).join(' ').toLowerCase();
+  if (!combined) return false;
+  const mentionsDateFormat = /date|format|날짜|표기|포맷|형식/.test(combined);
+  const hasDateLikeText = looksLikeDateText(before) || looksLikeDateText(after) || looksLikeDateText(combined);
+  return mentionsDateFormat && hasDateLikeText;
+}
+
+function chooseKoreanTitle(rawTitle, before, after) {
+  const title = compactText(rawTitle);
+  if (title && hasHangul(title) && !hasLongEnglish(title)) return title;
+  if (looksLikeDateText(before) || looksLikeDateText(after) || /date|format/i.test(title)) return '날짜 형식 불일치';
+  if (before && after) return '표현 수정 필요';
+  if (before) return '오탈자 확인 필요';
+  return '검수 필요';
+}
+
+function chooseKoreanDescription(rawDescription, slide, before, after, title) {
+  const description = compactText(rawDescription);
+  if (description && hasHangul(description) && !hasLongEnglish(description)) return description;
+  if (looksLikeDateText(before) || looksLikeDateText(after) || /날짜/.test(title)) {
+    if (before && after) return `슬라이드 ${slide}의 날짜 표기를 '${before}'에서 '${after}'로 통일해 주세요.`;
+    return `슬라이드 ${slide}의 날짜 표기 형식을 확인해 주세요.`;
+  }
+  if (before && after) return `슬라이드 ${slide}에서 '${before}' 표현을 '${after}'로 수정해 주세요.`;
+  if (before) return `슬라이드 ${slide}의 '${before}' 표현을 확인해 주세요.`;
+  return `슬라이드 ${slide}의 표현을 검토해 주세요.`;
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
+}
+
+function stableIssueKey(issue) {
+  return [
+    issue.slide,
+    issue.type,
+    compactText(issue.before).toLowerCase(),
+    compactText(issue.after).toLowerCase(),
+    compactText(issue.title).toLowerCase()
+  ].join('|');
+}
+
+function normalizeIssue(rawIssue, fallbackSlide) {
+  const type = 'error';
+  const slide = Number.isInteger(rawIssue?.slide) ? rawIssue.slide : fallbackSlide;
+  const before = compactText(rawIssue?.before);
+  const after = compactText(rawIssue?.after);
+  const title = chooseKoreanTitle(rawIssue?.title, before, after);
+  const description = chooseKoreanDescription(rawIssue?.description, slide, before, after, title);
+  if (isDateFormattingIssue(rawIssue?.title, rawIssue?.description, before, after) || isDateFormattingIssue(title, description, before, after)) {
+    return null;
+  }
+  const normalized = {
+    slide,
+    type,
+    title,
+    description,
+    before,
+    after
+  };
+  normalized.id = `issue_${hashString(stableIssueKey(normalized))}`;
+  return normalized;
+}
+
+function dedupeIssues(issues) {
+  const weight = { error: 0 };
+  const seen = new Map();
+  for (const issue of issues) {
+    const key = stableIssueKey(issue);
+    if (!seen.has(key)) seen.set(key, issue);
+  }
+  return [...seen.values()].sort((a, b) => {
+    if (a.slide !== b.slide) return a.slide - b.slide;
+    if (weight[a.type] !== weight[b.type]) return weight[a.type] - weight[b.type];
+    return stableIssueKey(a).localeCompare(stableIssueKey(b));
+  });
+}
+
+function intersectIssues(primaryIssues, secondaryIssues) {
+  const secondaryKeys = new Set(secondaryIssues.map(stableIssueKey));
+  return primaryIssues.filter(issue => secondaryKeys.has(stableIssueKey(issue)));
+}
+
+async function analyzeSingleSlideStable(slideText, slideNumber, apiKey, model, seed) {
+  if (!slideText || !slideText.trim()) return [];
+
+  const resp = await fetch(getChatCompletionsUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      temperature: ANALYSIS_TEMPERATURE,
+      top_p: 1,
+      seed,
+      max_tokens: 900,
+      messages: [
+        { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+        { role: 'user', content: buildStableSlidePrompt(slideText, slideNumber) }
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: ANALYSIS_SCHEMA
+      }
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API 오류 (${resp.status})`);
+  }
+
+  const data = await resp.json();
+  const text = data.choices?.[0]?.message?.content || '{"issues":[]}';
+  const parsed = JSON.parse(text);
+  return (parsed.issues || []).map(issue => normalizeIssue(issue, slideNumber)).filter(Boolean);
+}
+
+async function analyzeWithStableAI(slides, apiKey) {
+  const model = modelSelect.value;
+  const collected = [];
+  const conservativeMode = conservativeModeInput.checked;
+
+  for (let i = 0; i < slides.length; i += 1) {
+    setLoadingStep(`${model} 분석 중 (${i + 1}/${slides.length} 슬라이드${conservativeMode ? ', 보수 모드' : ''})`);
+    const firstPass = await analyzeSingleSlideStable(slides[i], i + 1, apiKey, model, ANALYSIS_SEED);
+    const slideIssues = conservativeMode
+      ? intersectIssues(firstPass, await analyzeSingleSlideStable(slides[i], i + 1, apiKey, model, ANALYSIS_SECOND_SEED))
+      : firstPass;
+    collected.push(...slideIssues);
+  }
+
+    setLoadingStep('결과 정리 중...');
+  return dedupeIssues(collected);
+}
+
+async function analyzeFile(idx) {
+  const f = files[idx];
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) { toast('API Key를 입력해 주세요.'); return; }
+  f.status = 'running'; renderFileList();
+  if (selectedIdx === idx) renderContent();
+  try {
+    if (selectedIdx === idx) { const s = document.getElementById('loadingStep'); if(s) s.textContent = 'PPTX 슬라이드 텍스트 추출 중...'; }
+    setLoadingStep('PPTX 슬라이드 텍스트 추출 중...');
+    const { slides, slideImages, slideVisuals, slideSize } = await extractPptxText(f.file);
+    f.slides = slides; f.slideImages = slideImages; f.slideVisuals = slideVisuals; f.slideSize = slideSize;
+    if (selectedIdx === idx) { const s = document.getElementById('loadingStep'); if(s) s.textContent = `${modelSelect.value} 분석 중...`; }
+    f.issues = await analyzeWithStableAI(slides, apiKey);
+    f.status = 'done';
+  } catch(e) { f.error = e.message; f.status = 'error'; console.error(e); }
+  renderFileList();
+  if (selectedIdx === idx) renderContent();
+}
+
+async function analyzeSelected() {
+  const markedTargets = files
+    .map((f, i) => ({ file: f, idx: i }))
+    .filter(({ file }) => file.marked && (file.status === 'pending' || file.status === 'error'));
+
+  if (markedTargets.length > 0) {
+    for (const target of markedTargets) {
+      const liveIdx = files.findIndex(f => f.id === target.file.id);
+      if (liveIdx < 0) continue;
+      selectFile(liveIdx);
+      await analyzeFile(liveIdx);
+      await new Promise(r => setTimeout(r, 250));
+    }
+    return;
+  }
+
+  if (selectedIdx >= 0) analyzeFile(selectedIdx);
+}
+
+async function analyzeAll() {
+  for (let i = 0; i < files.length; i++) {
+    if (files[i].status === 'pending') { selectFile(i); await analyzeFile(i); await new Promise(r => setTimeout(r, 500)); }
+  }
+  toast('전체 파일 검수가 완료되었습니다.');
+}
+
+/* ?? APPLY & DOWNLOAD (?섏젙 諛섏쁺) ?? */
+async function applyAndDownload(idx) {
+  const f = files[idx];
+  if (!f || !f.issues) return;
+  const toApply = f.issues.filter(Boolean).filter(iss => f.resolvedSet.has(iss.id) && iss.before && iss.after);
+  if (toApply.length === 0) { toast('반영할 항목이 없습니다. 처리 완료한 항목 중 수정 전후 텍스트가 있는 경우만 다운로드에 반영됩니다.'); return; }
+
+  toast('PPTX 수정 파일을 준비하는 중입니다.');
+  try {
+    const zip = await JSZip.loadAsync(f.file);
+    const slideFiles = Object.keys(zip.files).filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n));
+    for (const sf of slideFiles) {
+      let xml = await zip.files[sf].async('string');
+      for (const iss of toApply) {
+        try {
+          const re = new RegExp(iss.before.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g');
+          xml = xml.replace(re, iss.after);
+        } catch(_) {}
+      }
+      zip.file(sf, xml);
+    }
+    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = f.name.replace(/\.pptx$/i,'') + '_수정본.pptx';
+    a.click();
+    toast(`${toApply.length}건 반영 완료. 다운로드를 시작합니다.`);
+  } catch(e) { toast('오류: ' + e.message); console.error(e); }
+}
+
+/* ?? HELPERS ?? */
+function setFilter(f)  { activeFilter = f; renderContent(); }
+function startSearchComposition() {
+  isSearchComposing = true;
+}
+function endSearchComposition(evt) {
+  isSearchComposing = false;
+  applySearch(evt?.target?.value ?? '');
+}
+function handleSearchInput(evt) {
+  if (isSearchComposing || evt?.isComposing) return;
+  applySearch(evt?.target?.value ?? '');
+}
+function applySearch(q)  {
+  searchQuery = q;
+  renderContent();
+  const searchBox = document.querySelector('.search-box');
+  if (searchBox) {
+    searchBox.focus();
+    searchBox.setSelectionRange(q.length, q.length);
+  }
+}
+function setTab(t)     { activeTab = t; renderContent(); }
+function toggleResolve(fi, id) {
+  const f = files[fi];
+  if (f.resolvedSet.has(id)) f.resolvedSet.delete(id); else f.resolvedSet.add(id);
+  renderContent(); renderFileList();
+}
+function saveNote(fi, id, val) { files[fi].notes[id] = val; }
+
+function exportCSV(idx) {
+  const f = files[idx]; if (!f.issues) return;
+  const rows = [['파일명','슬라이드','제목','설명','원문','수정안','처리여부','메모']];
+  f.issues.filter(Boolean).forEach(iss => rows.push([f.name, iss.slide, iss.title, iss.description, iss.before, iss.after, f.resolvedSet.has(iss.id) ? '완료' : '미처리', f.notes[iss.id] || '']));
+  const csv = rows.map(r => r.map(c => '"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})), download: f.name.replace('.pptx','')+'_검수결과.csv' });
+  a.click(); toast('CSV 내보내기가 완료되었습니다.');
+}
+
+function exportJSON(idx) {
+  const f = files[idx]; if (!f.issues) return;
+  const data = { file:f.name, analyzedAt:new Date().toISOString(), model:modelSelect.value, conservativeMode: conservativeModeInput.checked, issues:f.issues.map(iss=>({...iss,resolved:f.resolvedSet.has(iss.id),note:f.notes[iss.id]||''})) };
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})), download: f.name.replace('.pptx','')+'_검수결과.json' });
+  a.click(); toast('JSON 내보내기가 완료되었습니다.');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function collectHighlightRanges(text, terms) {
+  const ranges = [];
+  const source = String(text || '');
+  const uniqueTerms = [...new Set((terms || []).map(term => String(term || '')).filter(Boolean))].sort((a, b) => b.length - a.length);
+
+  for (const term of uniqueTerms) {
+    let startIndex = 0;
+    while (startIndex < source.length) {
+      const foundAt = source.indexOf(term, startIndex);
+      if (foundAt < 0) break;
+      ranges.push({ start: foundAt, end: foundAt + term.length, term });
+      startIndex = foundAt + term.length;
+    }
+  }
+
+  ranges.sort((a, b) => a.start - b.start || b.end - a.end);
+  const merged = [];
+  for (const range of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && range.start < last.end) continue;
+    merged.push(range);
+  }
+  return merged;
+}
+
+function buildHighlightedTextHtml(text, terms) {
+  const source = String(text || '');
+  const ranges = collectHighlightRanges(source, terms);
+  if (ranges.length === 0) return esc(source);
+
+  let html = '';
+  let cursor = 0;
+  for (const range of ranges) {
+    if (cursor < range.start) html += esc(source.slice(cursor, range.start));
+    html += `<mark class="issue-highlight">${esc(source.slice(range.start, range.end))}</mark>`;
+    cursor = range.end;
+  }
+  if (cursor < source.length) html += esc(source.slice(cursor));
+  return html;
+}
+
+function toast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function resetAppFromLogo() {
+  const ok = confirm('현재 화면을 초기화하고 처음부터 다시 시작할까요?');
+  if (!ok) return;
+  location.reload();
+}
+
+function renderLoading(f) {
+  contentEl.innerHTML = `<div class="result-panel">
+    <div class="result-header"><div class="result-filename">${esc(f.name)}</div><div class="result-meta">AI 분석 중...</div></div>
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div>슬라이드 텍스트 추출 및 AI 검수 진행 중</div>
+      <div class="loading-step" id="loadingStep">${analysisControl.paused ? '일시정지됨 · 재개 대기 중...' : 'PPTX 파싱 중...'}</div>
+      <div class="loading-actions">
+        <button type="button" class="loading-btn" onclick="togglePauseAnalysis()">${analysisControl.paused ? '재개' : '일시정지'}</button>
+        <button type="button" class="loading-btn danger" onclick="cancelAnalysis()">검수 취소</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function refreshRunningView() {
+  if (selectedIdx >= 0 && files[selectedIdx]?.status === 'running') renderContent();
+}
+
+function startAnalysisControl() {
+  analysisControl.active = true;
+  analysisControl.paused = false;
+  analysisControl.cancelled = false;
+  analysisControl.abortController = null;
+  updateBtns();
+}
+
+function finishAnalysisControl() {
+  analysisControl.active = false;
+  analysisControl.paused = false;
+  analysisControl.cancelled = false;
+  analysisControl.abortController = null;
+  updateBtns();
+}
+
+function togglePauseAnalysis() {
+  if (!analysisControl.active) return;
+  analysisControl.paused = !analysisControl.paused;
+  if (analysisControl.paused) {
+    setLoadingStep(analysisControl.abortController ? '현재 슬라이드 처리 후 일시정지합니다...' : '일시정지됨 · 재개 대기 중...');
+  } else {
+    setLoadingStep('검수를 재개하는 중...');
+  }
+  refreshRunningView();
+}
+
+function cancelAnalysis() {
+  if (!analysisControl.active) return;
+  analysisControl.cancelled = true;
+  analysisControl.batchCancelled = true;
+  analysisControl.paused = false;
+  setLoadingStep('검수를 취소하는 중...');
+  if (analysisControl.abortController) analysisControl.abortController.abort();
+  refreshRunningView();
+}
+
+function isAnalysisCancelledError(error) {
+  return error?.message === '__ANALYSIS_CANCELLED__';
+}
+
+async function ensureAnalysisCanContinue() {
+  if (analysisControl.cancelled) throw new Error('__ANALYSIS_CANCELLED__');
+  while (analysisControl.paused) {
+    setLoadingStep('일시정지됨 · 재개 대기 중...');
+    await sleep(200);
+    if (analysisControl.cancelled) throw new Error('__ANALYSIS_CANCELLED__');
+  }
+}
+
+async function analyzeSingleSlideStable(slideText, slideNumber, apiKey, model, seed) {
+  if (!slideText || !slideText.trim()) return [];
+
+  const controller = new AbortController();
+  analysisControl.abortController = controller;
+
+  try {
+    const resp = await fetch(getChatCompletionsUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: ANALYSIS_TEMPERATURE,
+        top_p: 1,
+        seed,
+        max_tokens: 900,
+        messages: [
+          { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
+          { role: 'user', content: buildStableSlidePrompt(slideText, slideNumber) }
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: ANALYSIS_SCHEMA
+        }
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API 오류 (${resp.status})`);
+    }
+
+    const data = await resp.json();
+    const text = data.choices?.[0]?.message?.content || '{"issues":[]}';
+    const parsed = JSON.parse(text);
+    return (parsed.issues || []).map(issue => normalizeIssue(issue, slideNumber));
+  } catch (error) {
+    if (error?.name === 'AbortError' || analysisControl.cancelled) {
+      throw new Error('__ANALYSIS_CANCELLED__');
+    }
+    if (error instanceof TypeError && /fetch/i.test(error.message || '')) {
+      throw new Error(getFetchFailureMessage());
+    }
+    throw error;
+  } finally {
+    if (analysisControl.abortController === controller) analysisControl.abortController = null;
+  }
+}
+
+async function analyzeWithStableAI(slides, apiKey) {
+  const model = modelSelect.value;
+  const collected = [];
+  const conservativeMode = conservativeModeInput.checked;
+
+  for (let i = 0; i < slides.length; i += 1) {
+    await ensureAnalysisCanContinue();
+    setLoadingStep(`${model} 분석 중 (${i + 1}/${slides.length} 슬라이드${conservativeMode ? ', 보수 모드' : ''})`);
+
+    const firstPass = await analyzeSingleSlideStable(slides[i], i + 1, apiKey, model, ANALYSIS_SEED);
+    await ensureAnalysisCanContinue();
+
+    const slideIssues = conservativeMode
+      ? intersectIssues(firstPass, await analyzeSingleSlideStable(slides[i], i + 1, apiKey, model, ANALYSIS_SECOND_SEED))
+      : firstPass;
+
+    collected.push(...slideIssues);
+  }
+
+  await ensureAnalysisCanContinue();
+  setLoadingStep('결과 정리 중...');
+  return dedupeIssues(collected);
+}
+
+async function analyzeFile(idx) {
+  const f = files[idx];
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) { toast('API Key를 입력해 주세요.'); return; }
+
+  startAnalysisControl();
+  f.error = '';
+  f.status = 'running';
+  renderFileList();
+  if (selectedIdx === idx) renderContent();
+
+  try {
+    setLoadingStep('PPTX 슬라이드 텍스트 추출 중...');
+    const { slides, slideImages, slideVisuals, slideSize } = await extractPptxText(f.file);
+    f.slides = slides;
+    f.slideImages = slideImages;
+    f.slideVisuals = slideVisuals;
+    f.slideSize = slideSize;
+
+    await ensureAnalysisCanContinue();
+    setLoadingStep(`${modelSelect.value} 분석 준비 중...`);
+    f.issues = await analyzeWithStableAI(slides, apiKey);
+    f.status = 'done';
+    f.marked = false;
+  } catch (e) {
+    if (isAnalysisCancelledError(e)) {
+      f.status = 'pending';
+      f.error = '';
+      toast('검수를 취소했습니다.');
+    } else {
+      f.error = e.message;
+      f.status = 'error';
+      console.error(e);
+    }
+  } finally {
+    finishAnalysisControl();
+    renderFileList();
+    if (selectedIdx === idx) renderContent();
+  }
+}
+
+async function analyzeSelected() {
+  analysisControl.batchCancelled = false;
+
+  const markedTargets = files
+    .map((f, i) => ({ file: f, idx: i }))
+    .filter(({ file }) => file.marked && (file.status === 'pending' || file.status === 'error'));
+
+  if (markedTargets.length > 0) {
+    for (const target of markedTargets) {
+      if (analysisControl.batchCancelled) break;
+      const liveIdx = files.findIndex(f => f.id === target.file.id);
+      if (liveIdx < 0) continue;
+      selectFile(liveIdx);
+      await analyzeFile(liveIdx);
+      if (analysisControl.batchCancelled) break;
+      await sleep(250);
+    }
+    if (analysisControl.batchCancelled) toast('선택한 파일 검수를 중단했습니다.');
+    analysisControl.batchCancelled = false;
+    return;
+  }
+
+  if (selectedIdx >= 0) await analyzeFile(selectedIdx);
+  analysisControl.batchCancelled = false;
+}
+
+async function analyzeAll() {
+  analysisControl.batchCancelled = false;
+
+  for (let i = 0; i < files.length; i += 1) {
+    if (analysisControl.batchCancelled) break;
+    if (files[i].status !== 'pending') continue;
+    selectFile(i);
+    await analyzeFile(i);
+    if (analysisControl.batchCancelled) break;
+    await sleep(500);
+  }
+
+  if (analysisControl.batchCancelled) {
+    toast('전체 검수를 중단했습니다.');
+  } else {
+    toast('전체 파일 검수가 완료되었습니다.');
+  }
+  analysisControl.batchCancelled = false;
+}
+
+function renderFileList() {
+  fileListEl.innerHTML = files.map((f, i) => {
+    const m = {
+      pending: ['badge-pending', '\uB300\uAE30'],
+      running: ['badge-running', '\uBD84\uC11D\uC911'],
+      done: ['badge-done', f.issues ? `${f.issues.length}\uAC74` : `0\uAC74`],
+      error: ['badge-error-file', '\uC624\uB958']
+    };
+    const [cls, lbl] = m[f.status];
+    const active = i === selectedIdx ? ' active' : '';
+    const marked = f.marked ? ' marked' : '';
+    return `<div class="file-item${active}${marked}" onclick="selectFile(${i})">
+      <input class="file-check" type="checkbox" ${f.marked ? 'checked' : ''} onclick="toggleFileMark(${i},event)" />
+      <div class="file-main-hit" onclick="handleFileMainClick(${i},event)">
+        <span class="file-icon">&#128202;</span>
+        <div class="file-meta">
+          <div class="file-name" title="${esc(f.name)}">${esc(f.name)}</div>
+          <div class="file-status">${(f.size/1024).toFixed(0)} KB</div>
+        </div>
+      </div>
+      <span class="file-badge ${cls}">${lbl}</span>
+      <button class="file-del" onclick="deleteFile(${i},event)" title="\uBAA9\uB85D\uC5D0\uC11C \uC0AD\uC81C">&times;</button>
+    </div>`;
+  }).join('');
+  updateFileTools();
+}
+</script>
+</body>
+</html>
+
+
+
+
+
+
