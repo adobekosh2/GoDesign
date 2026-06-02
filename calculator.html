@@ -80,12 +80,12 @@ canvas{display:block;max-width:100%}
 <body>
 
 <div class="nav">
-  <button class="nav-tab active" onclick="switchTab('vw',this)">① vw 계산기</button>
-  <button class="nav-tab" onclick="switchTab('map',this)">② 이미지 맵</button>
+  <button class="nav-tab" onclick="switchTab('vw',this)">① vw 계산기</button>
+  <button class="nav-tab active" onclick="switchTab('map',this)">② 이미지 맵</button>
 </div>
 
 <!-- ① VW -->
-<div class="panel" id="panel-vw" style="display:block">
+<div class="panel" id="panel-vw" style="display:none">
   <div class="badge">MOBILE · 720px @2x</div>
   <div class="sec-label">디자인 원본 px</div>
   <div class="input-row">
@@ -107,7 +107,7 @@ canvas{display:block;max-width:100%}
 </div>
 
 <!-- ② IMAGE MAP -->
-<div class="panel wide" id="panel-map" style="display:none">
+<div class="panel wide" id="panel-map" style="display:block">
   <div id="uploadArea">
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
       <div class="icon">🖼</div>
@@ -121,8 +121,8 @@ canvas{display:block;max-width:100%}
     <div class="toolbar">
       <span style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.06em">이미지 맵 에디터</span>
       <span style="flex:1"></span>
-      <button class="tool-btn" onclick="document.getElementById('fileInput').click()">↺ 이미지 변경</button>
-      <button class="tool-btn danger" onclick="clearAll()">✕ 전체 삭제</button>
+      <button class="tool-btn" onclick="deleteImage()">↺ 이미지 삭제</button>
+      <button class="tool-btn danger" onclick="clearAll()">✕ 이미지맵 전체 삭제</button>
     </div>
     <div class="hint-bar" id="hintBar">이미지를 클릭하거나 드래그해서 영역을 지정하세요</div>
     <div class="canvas-wrap">
@@ -196,6 +196,7 @@ var HANDLE_R = 7;
 var DEL_R = 8;
 
 var imgEl = null;
+var imageFileName = 'image.jpg';
 var areas = [];
 var phase = 0;
 var pendingP1 = null;
@@ -212,6 +213,7 @@ dropZone.addEventListener('drop', function(e) {
 });
 function loadFile(inp) { if (inp.files[0]) loadFileObj(inp.files[0]); }
 function loadFileObj(file) {
+  imageFileName = file.name || 'image.jpg';
   var r = new FileReader();
   r.onload = function(e) {
     imgEl = new Image();
@@ -458,7 +460,7 @@ function renderCode() {
 
 function buildCode() {
   var lines = [
-    '<img src="image.jpg" usemap="#mymap" alt="">',
+    '<img src="' + escapeAttr(imageFileName) + '" usemap="#mymap" alt="">',
     '<map name="mymap">'
   ];
   areas.forEach(function(a) {
@@ -469,8 +471,38 @@ function buildCode() {
   return lines.join('\n');
 }
 
+function escapeAttr(value) {
+  return String(value).replace(/[&<>"']/g, function(ch) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[ch];
+  });
+}
+
 function delArea(i) { areas.splice(i, 1); redraw(); updateUI(); }
 function clearAll() { areas = []; phase = 0; pendingP1 = null; setHint(); redraw(); updateUI(); }
+function deleteImage() {
+  imgEl = null;
+  imageFileName = 'image.jpg';
+  areas = [];
+  phase = 0;
+  pendingP1 = null;
+  mousePos = null;
+  dragState = null;
+  canvas.width = 0;
+  canvas.height = 0;
+  canvas.removeAttribute('data-sc');
+  canvas.removeAttribute('data-pad');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('areasList').innerHTML = '';
+  document.getElementById('codeEl').textContent = '영역을 지정하면 코드가 생성됩니다';
+  document.getElementById('editorArea').style.display = 'none';
+  document.getElementById('uploadArea').style.display = 'block';
+}
 
 function copyCode() {
   if (!areas.length) return;
