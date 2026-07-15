@@ -91,6 +91,7 @@ canvas{display:block;max-width:100%}
 .grid-group .chip-row{margin-bottom:0}
 .grid-field-row{display:flex;gap:12px;margin-bottom:1rem}
 .grid-field{flex:1;min-width:0}
+.grid-group .sec-label{color:var(--muted);font-size:12px}
 .grid-field input[type="number"]{width:100%;font-family:var(--mono);font-size:19px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;outline:none;transition:border-color .15s ease;-moz-appearance:textfield}
 .grid-field input[type="number"]::-webkit-inner-spin-button,.grid-field input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
 .grid-field input[type="number"]:focus{border-color:var(--accent)}
@@ -111,6 +112,7 @@ canvas{display:block;max-width:100%}
 .grid-unit-toggle .tool-btn{flex:1;text-align:center;background:var(--surface2)}
 .grid-unit-toggle .tool-btn.active{color:var(--accent);border-color:var(--accent-b);background:var(--accent-d)}
 .grid-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:2px;margin-top:1rem}
+.grid-stat-card .sec-label{color:var(--muted)}
 .grid-readout{display:flex;align-items:center;gap:12px;min-height:46px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);margin-bottom:1rem;font-family:var(--mono);font-size:12px;color:var(--muted);transition:border-color .15s ease,background .15s ease}
 .grid-readout .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .15s ease,box-shadow .15s ease}
 .grid-readout .val{font-size:14px;font-weight:500;color:var(--text)}
@@ -233,7 +235,7 @@ canvas{display:block;max-width:100%}
         </div>
         <div class="grid-field-row" style="margin-bottom:0">
           <div class="grid-field">
-            <div class="sec-label">컬럼 수</div>
+            <div class="sec-label">칼럼 수(그리드)</div>
             <input type="number" id="gridCols" value="12" min="1" max="48" step="1" oninput="gridRender()" onfocus="gridSetHighlight('columns')" onblur="gridSetHighlight('')" />
           </div>
         </div>
