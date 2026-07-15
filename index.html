@@ -111,8 +111,16 @@ canvas{display:block;max-width:100%}
 .grid-unit-toggle{display:flex;gap:8px;margin-bottom:1rem}
 .grid-unit-toggle .tool-btn{flex:1;text-align:center;background:var(--surface2)}
 .grid-unit-toggle .tool-btn.active{color:var(--accent);border-color:var(--accent-b);background:var(--accent-d)}
-.grid-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:2px;margin-top:1rem}
+.grid-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px 40px;display:flex;justify-content:space-between;align-items:stretch;gap:18px;margin-top:1rem}
 .grid-stat-card .sec-label{color:var(--muted)}
+.grid-stat-primary{display:flex;flex-direction:column;justify-content:center;gap:6px;min-width:120px}
+.grid-stat-primary .stat-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.grid-stat-primary .stat-value{font-family:var(--mono);font-size:32px;font-weight:500;color:var(--accent);line-height:1}
+.grid-stat-meta{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,max-content);gap:10px 60px;align-content:center}
+.grid-stat-item{display:flex;flex-direction:column;gap:4px}
+.grid-stat-item .stat-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.grid-stat-item .stat-value{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--text);line-height:1.15}
+@media (max-width:760px){.grid-stat-card{flex-direction:column}.grid-stat-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .grid-readout{display:flex;align-items:center;gap:12px;min-height:46px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);margin-bottom:1rem;font-family:var(--mono);font-size:12px;color:var(--muted);transition:border-color .15s ease,background .15s ease}
 .grid-readout .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .15s ease,box-shadow .15s ease}
 .grid-readout .val{font-size:14px;font-weight:500;color:var(--text)}
@@ -288,8 +296,28 @@ canvas{display:block;max-width:100%}
         <span><i class="leg-gutter"></i>거터</span>
       </div>
       <div class="grid-stat-card">
-        <div class="sec-label">컬럼 1개 너비</div>
-        <div class="result-num" id="gridColWidthOut" style="font-size:32px">—</div>
+        <div class="grid-stat-primary">
+          <div class="stat-label">컬럼 너비</div>
+          <div class="stat-value" id="gridColWidthOut">—</div>
+        </div>
+        <div class="grid-stat-meta">
+        <div class="grid-stat-item">
+          <div class="stat-label">너비</div>
+          <div class="stat-value" id="gridWidthOut">—</div>
+        </div>
+        <div class="grid-stat-item">
+          <div class="stat-label">칼럼 수</div>
+          <div class="stat-value" id="gridColsOut">—</div>
+        </div>
+        <div class="grid-stat-item">
+          <div class="stat-label">거터</div>
+          <div class="stat-value" id="gridGutterOut">—</div>
+        </div>
+        <div class="grid-stat-item">
+          <div class="stat-label">마진</div>
+          <div class="stat-value" id="gridMarginOut">—</div>
+        </div>
+        </div>
       </div>
     </div>
   </div>
@@ -832,6 +860,10 @@ function gridRender() {
   var row = document.getElementById('gridRow');
   var dimRow = document.getElementById('gridDimRow');
   var colWidthOut = document.getElementById('gridColWidthOut');
+  var widthOut = document.getElementById('gridWidthOut');
+  var colsOut = document.getElementById('gridColsOut');
+  var gutterOut = document.getElementById('gridGutterOut');
+  var marginOut = document.getElementById('gridMarginOut');
   var cssOut = document.getElementById('gridCodeEl');
   var overlay = document.getElementById('gridOverlayRow');
 
@@ -839,6 +871,10 @@ function gridRender() {
 
   if (colWidth <= 0) {
     colWidthOut.textContent = '입력값 확인 필요';
+    widthOut.textContent = '—';
+    colsOut.textContent = '—';
+    gutterOut.textContent = '—';
+    marginOut.textContent = '—';
     row.innerHTML = '';
     dimRow.innerHTML = '';
     overlay.innerHTML = '';
@@ -847,7 +883,11 @@ function gridRender() {
     return;
   }
 
+  widthOut.textContent = gridFormatValue(containerWidth) + 'px';
+  colsOut.textContent = columns + '개';
   colWidthOut.textContent = (Number.isInteger(colWidth) ? colWidth : colWidth.toFixed(1)) + 'px';
+  gutterOut.textContent = gridFormatValue(gutter) + 'px';
+  marginOut.textContent = gridFormatValue(margin) + 'px';
 
   row.innerHTML = '';
   dimRow.innerHTML = '';
