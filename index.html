@@ -8,10 +8,12 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0e0e0e;--surface:#181818;--surface2:#222;--border:rgba(255,255,255,.08);
+  --bg:#0e0e0e;--surface:#181818;--surface2:#222;--surface3:#2a2a2a;--border:rgba(255,255,255,.08);
   --border-h:rgba(255,255,255,.16);--text:#f0ede8;--muted:#888;--dim:#444;
   --accent:#c8f060;--accent-d:rgba(200,240,96,.12);--accent-b:rgba(200,240,96,.25);
-  --red:#ff6b6b;--blue:#60b8f0;
+  --red:#ff6b6b;--blue:#60b8f0;--blue-d:rgba(96,184,240,.14);--blue-b:rgba(96,184,240,.3);
+  --orange:#f0a060;--orange-d:rgba(240,160,96,.14);--orange-b:rgba(240,160,96,.3);
+  --purple:#b060f0;--purple-d:rgba(176,96,240,.14);--purple-b:rgba(176,96,240,.3);
   --mono:'DM Mono',monospace;--sans:'Pretendard',sans-serif;
 }
 html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:300;-webkit-font-smoothing:antialiased;min-height:100vh}
@@ -47,6 +49,8 @@ input[type="range"]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;b
 .btn-accent:hover{background:#d4f570;transform:translateY(-1px)}
 .btn-accent:active{transform:scale(.98)}
 .btn-accent.done{background:#5af0a0}
+.grid-action-row{display:flex;gap:10px;flex-wrap:wrap}
+.grid-action-row .btn-accent{flex:1 1 160px;width:auto}
 .foot-note{text-align:center;font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:1.5rem}
 
 /* IMAGE MAP */
@@ -75,6 +79,80 @@ canvas{display:block;max-width:100%}
 .area-del:hover{color:var(--red)}
 .code-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;max-height:220px;overflow-y:auto}
 #codeEl{white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--muted)}
+#gridCodeEl{white-space:pre-wrap;word-break:break-all;font-family:var(--mono);font-size:11px;line-height:1.9;color:var(--muted)}
+
+/* GRID CALCULATOR */
+.grid-layout{display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start}
+.grid-settings{flex:1 1 300px;max-width:340px;min-width:260px}
+.grid-preview-wrap{flex:2 1 460px;min-width:320px}
+.grid-group{padding-bottom:1.1rem;margin-bottom:1.1rem}
+.grid-group:not(:last-of-type){border-bottom:1px dashed var(--border-h)}
+.grid-group .grid-field-row:last-child{margin-bottom:0}
+.grid-group .chip-row{margin-bottom:0}
+.grid-field-row{display:flex;gap:12px;margin-bottom:1rem}
+.grid-field{flex:1;min-width:0}
+.grid-field input[type="number"]{width:100%;font-family:var(--mono);font-size:19px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;outline:none;transition:border-color .15s ease;-moz-appearance:textfield}
+.grid-field input[type="number"]::-webkit-inner-spin-button,.grid-field input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
+.grid-field input[type="number"]:focus{border-color:var(--accent)}
+#gridWidth:focus{border-color:var(--purple)}
+#gridMargin:focus{border-color:var(--orange)}
+#gridGutter:focus{border-color:var(--blue)}
+.grid-candidates-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.grid-candidates-head .mini-num{width:52px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 6px;outline:none}
+.grid-candidates-head .mini-num:focus{border-color:var(--blue)}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem}
+.grid-chip{padding:6px 10px;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.3}
+.grid-chip:hover{color:var(--text);border-color:var(--border-h)}
+.grid-chip.active{color:var(--blue);border-color:var(--blue-b);background:var(--blue-d)}
+.grid-chip .chip-sub{font-size:9px;color:var(--dim)}
+.grid-chip-empty{font-size:12px;color:var(--muted);font-family:var(--sans)}
+
+.grid-unit-toggle{display:flex;gap:8px;margin-bottom:1rem}
+.grid-unit-toggle .tool-btn{flex:1;text-align:center;background:var(--surface2)}
+.grid-unit-toggle .tool-btn.active{color:var(--accent);border-color:var(--accent-b);background:var(--accent-d)}
+.grid-stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:2px;margin-top:1rem}
+.grid-readout{display:flex;align-items:center;gap:12px;min-height:46px;padding:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);margin-bottom:1rem;font-family:var(--mono);font-size:12px;color:var(--muted);transition:border-color .15s ease,background .15s ease}
+.grid-readout .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .15s ease,box-shadow .15s ease}
+.grid-readout .val{font-size:14px;font-weight:500;color:var(--text)}
+.grid-readout.hl-columns{border-color:var(--accent-b);background:var(--accent-d)}
+.grid-readout.hl-columns .dot{background:var(--accent);box-shadow:0 0 0 4px var(--accent-d)}
+.grid-readout.hl-columns .val{color:var(--accent)}
+.grid-readout.hl-width{border-color:var(--purple-b);background:var(--purple-d)}
+.grid-readout.hl-width .dot{background:var(--purple);box-shadow:0 0 0 4px var(--purple-d)}
+.grid-readout.hl-width .val{color:var(--purple)}
+.grid-readout.hl-gutter{border-color:var(--blue-b);background:var(--blue-d)}
+.grid-readout.hl-gutter .dot{background:var(--blue);box-shadow:0 0 0 4px var(--blue-d)}
+.grid-readout.hl-gutter .val{color:var(--blue)}
+.grid-readout.hl-margin{border-color:var(--orange-b);background:var(--orange-d)}
+.grid-readout.hl-margin .dot{background:var(--orange);box-shadow:0 0 0 4px var(--orange-d)}
+.grid-readout.hl-margin .val{color:var(--orange)}
+.grid-stage{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:26px clamp(10px,4vw,40px);transition:border-color .15s ease,box-shadow .15s ease}
+.grid-stage.hl-width{border-color:var(--purple-b);box-shadow:0 0 0 3px var(--purple-d)}
+.grid-row{display:flex;width:100%}
+.grid-row .seg{position:relative;height:116px;min-width:2px;border-radius:2px;transition:background .15s ease,outline-color .15s ease}
+.seg-margin{background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 1px,transparent 1px 8px);border-top:1px solid var(--border-h);border-bottom:1px solid var(--border-h)}
+.seg-gutter{border-top:1px dashed var(--border-h);border-bottom:1px dashed var(--border-h)}
+.seg-col{background:rgba(255,255,255,.05);border:1px solid var(--border-h);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.grid-stage.hl-margin .seg-margin{background:var(--orange-d);outline:2px solid var(--orange);outline-offset:-1px}
+.grid-stage.hl-columns .seg-col{background:var(--accent-d);outline:2px solid var(--accent);outline-offset:-1px;color:var(--accent)}
+.grid-stage.hl-gutter .seg-gutter{background:var(--blue-d);outline:2px solid var(--blue);outline-offset:-1px}
+.grid-dim-row{display:flex;width:100%;margin-top:6px}
+.grid-dim-row .dim{border-top:1px solid var(--accent);padding-top:6px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--accent);min-width:2px;white-space:nowrap;overflow:hidden;opacity:.7}
+.grid-dim-row .spacer{min-width:2px}
+.grid-overlay-row{position:relative;width:100%;height:20px;margin-top:2px}
+.grid-overlay-row .tick{position:absolute;top:0;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;transition:color .15s ease}
+.grid-overlay-row .tick::before{content:'';width:1px;height:5px;background:var(--muted);margin-bottom:3px;transition:background .15s ease}
+.grid-stage.hl-gutter .grid-overlay-row .tick.gutter-tick{color:var(--blue);font-weight:500}
+.grid-stage.hl-gutter .grid-overlay-row .tick.gutter-tick::before{background:var(--blue)}
+.grid-stage.hl-margin .grid-overlay-row .tick.margin-tick{color:var(--orange);font-weight:500}
+.grid-stage.hl-margin .grid-overlay-row .tick.margin-tick::before{background:var(--orange)}
+.grid-legend{display:flex;gap:20px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:1rem;font-family:var(--sans)}
+.grid-legend span{display:inline-flex;align-items:center;gap:6px}
+.grid-legend i{width:11px;height:11px;display:inline-block;border-radius:2px}
+.grid-legend i.leg-margin{background:repeating-linear-gradient(135deg,rgba(255,255,255,.14) 0 1px,transparent 1px 4px);border:1px solid var(--border-h)}
+.grid-legend i.leg-gutter{border:1px dashed var(--border-h)}
+.grid-legend i.leg-col{background:rgba(255,255,255,.12);border:1px solid var(--border-h)}
+@media (max-width:760px){.grid-layout{flex-direction:column}.grid-settings{max-width:100%}}
 </style>
 </head>
 <body>
@@ -82,6 +160,7 @@ canvas{display:block;max-width:100%}
 <div class="nav">
   <button class="nav-tab" onclick="switchTab('vw',this)">① vw 계산기</button>
   <button class="nav-tab active" onclick="switchTab('map',this)">② 이미지 맵</button>
+  <button class="nav-tab" onclick="switchTab('grid',this)">③ 그리드 계산기</button>
 </div>
 
 <!-- ① VW -->
@@ -132,6 +211,85 @@ canvas{display:block;max-width:100%}
     <div class="sec-label" style="margin-bottom:.5rem">생성된 HTML 코드</div>
     <div class="code-wrap"><div id="codeEl">영역을 지정하면 코드가 생성됩니다</div></div>
     <button class="btn-accent" id="copyCodeBtn" onclick="copyCode()">코드 복사</button>
+  </div>
+</div>
+
+<!-- ③ GRID CALCULATOR -->
+<div class="panel wide" id="panel-grid" style="display:none">
+  <div class="grid-layout">
+    <div class="grid-settings">
+      <div class="badge">GRID · COLUMN LAYOUT</div>
+
+      <div class="grid-group">
+        <div class="grid-field-row">
+          <div class="grid-field">
+            <div class="sec-label">캔버스 너비 (px)</div>
+            <input type="number" id="gridWidth" value="1200" min="200" step="1" oninput="gridRender()" onfocus="gridSetHighlight('width')" onblur="gridSetHighlight('')" />
+          </div>
+          <div class="grid-field">
+            <div class="sec-label">여백(마진) (px)</div>
+            <input type="number" id="gridMargin" value="0" min="0" step="1" oninput="gridRender()" onfocus="gridSetHighlight('margin')" onblur="gridSetHighlight('')" />
+          </div>
+        </div>
+        <div class="grid-field-row" style="margin-bottom:0">
+          <div class="grid-field">
+            <div class="sec-label">컬럼 수</div>
+            <input type="number" id="gridCols" value="12" min="1" max="48" step="1" oninput="gridRender()" onfocus="gridSetHighlight('columns')" onblur="gridSetHighlight('')" />
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-group">
+        <div class="grid-field-row">
+          <div class="grid-field">
+            <div class="sec-label">거터 (px)</div>
+            <input type="number" id="gridGutter" value="24" min="0" step="1" oninput="gridRender()" onfocus="gridSetHighlight('gutter')" onblur="gridSetHighlight('')" />
+          </div>
+        </div>
+
+        <div class="grid-candidates-head">
+          <div class="sec-label" style="margin-bottom:0">정수 컬럼폭 거터 후보</div>
+          <span style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--dim)">최대 <input class="mini-num" id="gridGutterMax" value="80" oninput="gridRender()" /></span>
+        </div>
+        <div class="chip-row" id="gridGutterCandidates" style="margin-bottom:0"></div>
+      </div>
+
+      <div class="grid-group">
+        <div class="grid-unit-toggle">
+          <button class="tool-btn active" id="gridUnitPx" onclick="gridSetUnit('px')">PX</button>
+          <button class="tool-btn" id="gridUnitFr" onclick="gridSetUnit('fr')">FR</button>
+        </div>
+
+        <div class="code-wrap"><div id="gridCodeEl">CSS</div></div>
+        <div class="grid-action-row">
+          <button class="btn-accent" id="gridCopyBtn" onclick="copyGridCss()">CSS 복사</button>
+          <button class="btn-accent" id="gridDownloadBtn" onclick="downloadGridPng()">PNG 다운로드</button>
+        </div>
+      </div>
+
+      <div class="foot-note">Figma 레이아웃 그리드의 Columns 타입에 동일한 값을 입력하면 같은 결과가 나옵니다.</div>
+    </div>
+
+    <div class="grid-preview-wrap">
+      <div class="grid-readout" id="gridReadout">
+        <span class="dot"></span>
+        <span id="gridReadoutText">인풋을 클릭하면 선택한 항목의 값이 여기에 표시돼요</span>
+      </div>
+      <div class="grid-stage" id="gridStage">
+        <div class="grid-row" id="gridRow"></div>
+        <div class="grid-dim-row" id="gridDimRow"></div>
+        <div class="grid-overlay-row" id="gridOverlayRow"></div>
+      </div>
+      <div class="grid-legend">
+        <span><i class="leg-margin"></i>마진</span>
+        <span><i class="leg-col"></i>컬럼</span>
+        <span><i class="leg-gutter"></i>거터</span>
+      </div>
+      <div class="grid-stat-card">
+        <div class="sec-label">컬럼 1개 너비</div>
+        <div class="result-num" id="gridColWidthOut" style="font-size:32px">—</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -192,6 +350,10 @@ function fallbackCopy(text, onSuccess) {
 var canvas = document.getElementById('mapCanvas');
 var ctx = canvas.getContext('2d');
 var COLORS = ['#60b8f0','#ff6b6b','#f0a060','#b060f0','#60f0c8','#f060b8','#f0e060'];
+var MAP_BOX_FILL = 'rgb(102,102,102)';
+var MAP_BOX_STROKE = 'rgb(51,51,51)';
+var MAP_BOX_STROKE_WIDTH = 1;
+var MAP_BOX_OPACITY = 0.6;
 var HANDLE_R = 7;
 var DEL_R = 8;
 
@@ -353,6 +515,7 @@ function redraw() {
   var PAD = parseInt(canvas.dataset.pad) || 0;
   var iw = canvas.width - PAD * 2;
   var ih = canvas.height - PAD * 2;
+  var pendingColor = COLORS[areas.length % COLORS.length];
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = 'rgba(120,120,120,0.15)';
@@ -361,11 +524,16 @@ function redraw() {
 
   areas.forEach(function(a, i) {
     var c = COLORS[i % COLORS.length];
-    ctx.strokeStyle = c; ctx.fillStyle = c + '2a'; ctx.lineWidth = 1.5;
+    ctx.save();
+    ctx.globalAlpha = MAP_BOX_OPACITY;
+    ctx.strokeStyle = MAP_BOX_STROKE;
+    ctx.fillStyle = MAP_BOX_FILL;
+    ctx.lineWidth = MAP_BOX_STROKE_WIDTH;
     ctx.fillRect(a.x1, a.y1, a.x2 - a.x1, a.y2 - a.y1);
     ctx.strokeRect(a.x1, a.y1, a.x2 - a.x1, a.y2 - a.y1);
+    ctx.restore();
     ctx.fillStyle = c;
-    ctx.font = 'bold 11px DM Mono,monospace';
+    ctx.font = 'bold 12px DM Mono,monospace';
     ctx.fillText(i + 1, a.x1 + 5, a.y1 + 15);
     drawHandle(a.x1, a.y1, c);
     drawHandle(a.x2, a.y2, c);
@@ -373,20 +541,20 @@ function redraw() {
   });
 
   if (phase === 1 && pendingP1) {
-    drawHandle(pendingP1.x, pendingP1.y, '#c8f060');
+    drawHandle(pendingP1.x, pendingP1.y, pendingColor);
     if (mousePos) {
       var x1 = Math.min(pendingP1.x, mousePos.x), y1 = Math.min(pendingP1.y, mousePos.y);
       var w = Math.abs(mousePos.x - pendingP1.x), h = Math.abs(mousePos.y - pendingP1.y);
       ctx.save();
-      ctx.globalAlpha = 0.6;
-      ctx.fillStyle = 'rgb(102,102,102)';
+      ctx.globalAlpha = MAP_BOX_OPACITY;
+      ctx.fillStyle = MAP_BOX_FILL;
       ctx.fillRect(x1, y1, w, h);
-      ctx.strokeStyle = 'rgb(51,51,51)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = MAP_BOX_STROKE;
+      ctx.lineWidth = MAP_BOX_STROKE_WIDTH;
       ctx.setLineDash([]);
       ctx.strokeRect(x1, y1, w, h);
       ctx.restore();
-      drawHandle(mousePos.x, mousePos.y, '#c8f060');
+      drawHandle(mousePos.x, mousePos.y, pendingColor);
     }
   }
 }
@@ -513,6 +681,250 @@ function copyCode() {
     setTimeout(function() { b.textContent = orig; }, 1800);
   });
 }
+
+/* ── GRID CALCULATOR ── */
+var gridUnit = 'px';
+var gridActiveHighlight = '';
+var gridLastStats = { containerWidth: 0, columns: 0, gutter: 0, margin: 0, colWidth: 0 };
+
+function gridSetUnit(unit) {
+  gridUnit = unit;
+  document.getElementById('gridUnitPx').classList.toggle('active', unit === 'px');
+  document.getElementById('gridUnitFr').classList.toggle('active', unit === 'fr');
+  gridRender();
+}
+
+function gridSetHighlight(type) {
+  gridActiveHighlight = type;
+  var stage = document.getElementById('gridStage');
+  stage.classList.remove('hl-width', 'hl-margin', 'hl-columns', 'hl-gutter');
+  if (type) stage.classList.add('hl-' + type);
+  gridUpdateReadout();
+}
+
+function gridUpdateReadout() {
+  var box = document.getElementById('gridReadout');
+  var text = document.getElementById('gridReadoutText');
+  box.classList.remove('hl-width', 'hl-margin', 'hl-columns', 'hl-gutter');
+  if (!gridActiveHighlight) {
+    text.innerHTML = '인풋을 클릭하면 선택한 항목의 값이 여기에 표시돼요';
+    return;
+  }
+  box.classList.add('hl-' + gridActiveHighlight);
+  var label, value;
+  if (gridActiveHighlight === 'width') { label = '캔버스 너비'; value = gridLastStats.containerWidth + 'px'; }
+  else if (gridActiveHighlight === 'margin') { label = '여백(마진)'; value = gridLastStats.margin + 'px · 좌우 각각'; }
+  else if (gridActiveHighlight === 'columns') { label = '컬럼 폭'; value = gridLastStats.columns + '개 × ' + gridLastStats.colWidth.toFixed(1) + 'px'; }
+  else if (gridActiveHighlight === 'gutter') { label = '거터'; value = gridLastStats.gutter + 'px'; }
+  text.innerHTML = label + ' <span class="val">' + value + '</span>';
+}
+
+function gridMakeSeg(cls, weight, label) {
+  var seg = document.createElement('div');
+  seg.className = 'seg ' + cls;
+  seg.style.flex = weight + ' 1 0';
+  if (label) seg.textContent = label;
+  return seg;
+}
+
+function gridFormatValue(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function gridMakeDim(weight, value) {
+  var item = document.createElement('div');
+  item.className = 'dim';
+  item.style.flex = weight + ' 1 0';
+  item.textContent = gridFormatValue(value);
+  return item;
+}
+
+function gridMakeSpacer(weight) {
+  var item = document.createElement('div');
+  item.className = 'spacer';
+  item.style.flex = weight + ' 1 0';
+  return item;
+}
+
+function gridBuildOverlay(containerWidth, columns, colWidth, gutter, margin) {
+  var overlay = document.getElementById('gridOverlayRow');
+  overlay.innerHTML = '';
+
+  if (margin > 0) {
+    var leftTick = document.createElement('div');
+    leftTick.className = 'tick margin-tick';
+    leftTick.style.left = ((margin / 2) / containerWidth) * 100 + '%';
+    leftTick.textContent = gridFormatValue(margin);
+    overlay.appendChild(leftTick);
+
+    var rightTick = document.createElement('div');
+    rightTick.className = 'tick margin-tick';
+    rightTick.style.left = ((containerWidth - margin / 2) / containerWidth) * 100 + '%';
+    rightTick.textContent = gridFormatValue(margin);
+    overlay.appendChild(rightTick);
+  }
+
+  if (gutter <= 0 || columns <= 1) return;
+  var cursor = margin;
+  for (var i = 0; i < columns; i++) {
+    cursor += colWidth;
+    if (i < columns - 1) {
+      var center = cursor + gutter / 2;
+      var pct = (center / containerWidth) * 100;
+      var tick = document.createElement('div');
+      tick.className = 'tick gutter-tick';
+      tick.style.left = pct + '%';
+      tick.textContent = gridFormatValue(gutter);
+      overlay.appendChild(tick);
+      cursor += gutter;
+    }
+  }
+}
+
+function gridRenderCandidates(containerWidth, columns, margin, currentGutter) {
+  var box = document.getElementById('gridGutterCandidates');
+  box.innerHTML = '';
+  var maxGutter = Math.max(parseInt(document.getElementById('gridGutterMax').value) || 0, 0);
+  var usable = containerWidth - margin * 2;
+
+  if (columns === 1) {
+    box.innerHTML = '<span class="grid-chip-empty">컬럼이 1개면 거터가 필요 없어요. 컬럼 폭은 항상 ' + usable + 'px 입니다.</span>';
+    return;
+  }
+
+  var found = [];
+  for (var g = 0; g <= maxGutter; g++) {
+    var usableForCols = usable - g * (columns - 1);
+    if (usableForCols <= 0) continue;
+    if (usableForCols % columns === 0) found.push({ gutter: g, colWidth: usableForCols / columns });
+  }
+
+  if (found.length === 0) {
+    box.innerHTML = '<span class="grid-chip-empty">이 범위 안에는 정수로 떨어지는 거터가 없어요. 최대값을 늘려보세요.</span>';
+    return;
+  }
+
+  found.slice(0, 24).forEach(function(item) {
+    var chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'grid-chip' + (item.gutter === currentGutter ? ' active' : '');
+    chip.innerHTML = item.gutter + 'px<span class="chip-sub">col ' + item.colWidth + 'px</span>';
+    chip.addEventListener('click', function() {
+      document.getElementById('gridGutter').value = item.gutter;
+      gridRender();
+      document.getElementById('gridGutter').focus();
+    });
+    box.appendChild(chip);
+  });
+}
+
+function gridRender() {
+  var containerWidth = Math.max(parseFloat(document.getElementById('gridWidth').value) || 0, 1);
+  var columns = Math.max(parseInt(document.getElementById('gridCols').value) || 1, 1);
+  var gutter = Math.max(parseFloat(document.getElementById('gridGutter').value) || 0, 0);
+  var margin = Math.max(parseFloat(document.getElementById('gridMargin').value) || 0, 0);
+
+  var usable = containerWidth - margin * 2 - gutter * (columns - 1);
+  var colWidth = usable / columns;
+
+  var row = document.getElementById('gridRow');
+  var dimRow = document.getElementById('gridDimRow');
+  var colWidthOut = document.getElementById('gridColWidthOut');
+  var cssOut = document.getElementById('gridCodeEl');
+  var overlay = document.getElementById('gridOverlayRow');
+
+  gridLastStats = { containerWidth: containerWidth, columns: columns, gutter: gutter, margin: margin, colWidth: colWidth > 0 ? colWidth : 0 };
+
+  if (colWidth <= 0) {
+    colWidthOut.textContent = '입력값 확인 필요';
+    row.innerHTML = '';
+    dimRow.innerHTML = '';
+    overlay.innerHTML = '';
+    cssOut.textContent = '/* 마진과 거터가 캔버스 너비보다 큽니다 */';
+    gridUpdateReadout();
+    return;
+  }
+
+  colWidthOut.textContent = (Number.isInteger(colWidth) ? colWidth : colWidth.toFixed(1)) + 'px';
+
+  row.innerHTML = '';
+  dimRow.innerHTML = '';
+
+  if (margin > 0) {
+    row.appendChild(gridMakeSeg('seg-margin', margin));
+    dimRow.appendChild(gridMakeSpacer(margin));
+  }
+  for (var i = 0; i < columns; i++) {
+    row.appendChild(gridMakeSeg('seg-col', colWidth, i + 1));
+    dimRow.appendChild(gridMakeDim(colWidth, colWidth));
+    if (i < columns - 1 && gutter > 0) {
+      row.appendChild(gridMakeSeg('seg-gutter', gutter));
+      dimRow.appendChild(gridMakeSpacer(gutter));
+    }
+  }
+  if (margin > 0) {
+    row.appendChild(gridMakeSeg('seg-margin', margin));
+    dimRow.appendChild(gridMakeSpacer(margin));
+  }
+
+  gridBuildOverlay(containerWidth, columns, colWidth, gutter, margin);
+
+  var css;
+  if (gridUnit === 'px') {
+    css = '.grid {\n  display: grid;\n  grid-template-columns: repeat(' + columns + ', ' + colWidth.toFixed(1) + 'px);\n  column-gap: ' + gutter + 'px;\n  padding: 0 ' + margin + 'px;\n  max-width: ' + containerWidth + 'px;\n}';
+  } else {
+    css = '.grid {\n  display: grid;\n  grid-template-columns: repeat(' + columns + ', 1fr);\n  column-gap: ' + gutter + 'px;\n  padding: 0 ' + margin + 'px;\n  max-width: ' + containerWidth + 'px;\n}';
+  }
+  cssOut.textContent = css;
+
+  gridRenderCandidates(containerWidth, columns, margin, gutter);
+  gridUpdateReadout();
+}
+
+function copyGridCss() {
+  var css = document.getElementById('gridCodeEl').textContent;
+  copyText(css, function() {
+    var b = document.getElementById('gridCopyBtn');
+    var orig = b.textContent;
+    b.textContent = '복사됨 ✓';
+    setTimeout(function() { b.textContent = orig; }, 1800);
+  });
+}
+
+function downloadGridPng() {
+  var stats = gridLastStats;
+  if (!stats || stats.colWidth <= 0 || stats.columns <= 0 || stats.containerWidth <= 0) {
+    alert('먼저 유효한 그리드를 만들어주세요.');
+    return;
+  }
+
+  var exportWidth = Math.max(1, Math.round(stats.containerWidth));
+  var exportHeight = 600;
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  canvas.width = exportWidth;
+  canvas.height = exportHeight;
+  ctx.clearRect(0, 0, exportWidth, exportHeight);
+  ctx.fillStyle = '#e10000';
+
+  var cursor = stats.margin;
+  for (var i = 0; i < stats.columns; i++) {
+    ctx.fillRect(cursor, 0, stats.colWidth, exportHeight);
+    cursor += stats.colWidth + stats.gutter;
+  }
+
+  var link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = 'grid-' + exportWidth + 'w-' + stats.columns + 'col.png';
+  link.click();
+
+  var btn = document.getElementById('gridDownloadBtn');
+  var orig = btn.textContent;
+  btn.textContent = '다운로드됨 ✓';
+  setTimeout(function() { btn.textContent = orig; }, 1800);
+}
+
+gridRender();
 </script>
 </body>
 </html>
