@@ -35,6 +35,13 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--sans);font-we
 input[type="number"]{font-family:var(--mono);font-size:48px;font-weight:500;color:var(--text);background:transparent;border:none;outline:none;width:210px;-moz-appearance:textfield}
 input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
 .px-unit{font-family:var(--mono);font-size:20px;color:var(--muted)}
+.vw-base-row{display:flex;gap:12px;margin-bottom:1rem}
+.vw-base-field{flex:1;min-width:0}
+.vw-base-field .sec-label{color:var(--muted);font-size:12px}
+.vw-base-field input[type="number"]{width:100%;font-family:var(--mono);font-size:19px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;outline:none;transition:border-color .15s ease;-moz-appearance:textfield}
+.vw-base-field input[type="number"]::-webkit-inner-spin-button,.vw-base-field input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none}
+.vw-base-field input[type="number"]:focus{border-color:var(--accent)}
+.vw-source-label{color:var(--muted);font-size:12px}
 input[type="range"]{-webkit-appearance:none;width:100%;height:2px;background:var(--border-h);border-radius:2px;outline:none;cursor:pointer}
 input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);transition:transform .15s}
 input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2)}
@@ -175,24 +182,30 @@ canvas{display:block;max-width:100%}
 
 <!-- ① VW -->
 <div class="panel" id="panel-vw" style="display:none">
-  <div class="badge">MOBILE · 720px @2x</div>
-  <div class="sec-label">디자인 원본 px</div>
+  <div class="badge" id="vwBadge">MOBILE · 720px @2x</div>
+  <div class="vw-base-row">
+    <div class="vw-base-field">
+      <div class="sec-label">기준 디자인 폭 (px)</div>
+      <input type="number" id="designWidthInput" value="720" min="2" max="9999" step="1" oninput="calcVw()" />
+    </div>
+  </div>
+  <div class="sec-label vw-source-label">디자인 원본 px</div>
   <div class="input-row">
     <input type="number" id="pxInput" value="160" min="1" max="9999" oninput="calcVw()" />
     <span class="px-unit">px</span>
   </div>
   <input type="range" id="slider" min="1" max="720" value="160" step="1" oninput="syncSlider(this.value)" />
-  <div class="slider-ticks"><span>1</span><span>180</span><span>360</span><span>540</span><span>720</span></div>
+  <div class="slider-ticks" id="sliderTicks"><span>1</span><span>180</span><span>360</span><span>540</span><span>720</span></div>
   <div class="result-card">
     <div class="sec-label">결과값</div>
     <div class="result-num" id="resultVal">22.22vw</div>
   </div>
   <div class="formula-box">
     <div>① <span class="hi" id="f1a">160</span>px ÷ 2 = <span class="hi" id="f1b">80</span>px</div>
-    <div>② <span class="hi" id="f2a">80</span>px ÷ 360px × 100 = <span class="hi" id="f2b">22.22</span>vw</div>
+    <div>② <span class="hi" id="f2a">80</span>px ÷ <span id="fViewport">360</span>px × 100 = <span class="hi" id="f2b">22.22</span>vw</div>
   </div>
   <button class="btn-accent" id="copyVwBtn" onclick="copyVw()">복사 — 22.22vw</button>
-  <div class="foot-note">기준: 720px ÷ 2 = 360px viewport</div>
+  <div class="foot-note" id="vwFootNote">기준: 720px ÷ 2 = 360px viewport</div>
 </div>
 
 <!-- ② IMAGE MAP -->
@@ -334,11 +347,33 @@ function switchTab(id, el) {
 
 /* ── VW ── */
 function syncSlider(v) { document.getElementById('pxInput').value = v; calcVw(); }
+function formatNumber(n) {
+  return parseFloat(Number(n).toFixed(2));
+}
+function getDesignWidth() {
+  var value = parseFloat(document.getElementById('designWidthInput').value);
+  return value >= 2 ? value : 720;
+}
+function updateVwBase(width) {
+  var viewport = width / 2;
+  var slider = document.getElementById('slider');
+  slider.max = width;
+  slider.value = Math.min(parseFloat(slider.value) || 1, width);
+  document.getElementById('vwBadge').textContent = 'MOBILE · ' + formatNumber(width) + 'px @2x';
+  document.getElementById('fViewport').textContent = formatNumber(viewport);
+  document.getElementById('vwFootNote').textContent = '기준: ' + formatNumber(width) + 'px ÷ 2 = ' + formatNumber(viewport) + 'px viewport';
+  document.getElementById('sliderTicks').innerHTML = [1, width * 0.25, width * 0.5, width * 0.75, width].map(function(v) {
+    return '<span>' + formatNumber(v) + '</span>';
+  }).join('');
+}
 function calcVw() {
+  var designWidth = getDesignWidth();
+  var viewport = designWidth / 2;
   var raw = parseFloat(document.getElementById('pxInput').value) || 0;
-  document.getElementById('slider').value = Math.min(raw, 720);
+  updateVwBase(designWidth);
+  document.getElementById('slider').value = Math.min(raw, designWidth);
   var half = raw / 2;
-  var vw = parseFloat((half / 360 * 100).toFixed(2));
+  var vw = formatNumber(half / viewport * 100);
   var str = vw + 'vw';
   document.getElementById('resultVal').textContent = str;
   document.getElementById('f1a').textContent = raw;
